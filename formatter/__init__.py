@@ -1,15 +1,13 @@
 import logging
 
 from .Basic import BasicFormatter
-from .nlp.BasicBertFormatter import BasicBertFormatter
-from .cv.BasicResnetFormatter import BasicResnetFormatter
+from .cv.NibabelFormmater import NibabelFormmater
 
 logger = logging.getLogger(__name__)
 
 formatter_list = {
     "Basic": BasicFormatter,
-    "BasicBert": BasicBertFormatter,
-    "BasicResnet": BasicResnetFormatter
+    "Nibabel": NibabelFormmater,
 }
 
 
@@ -29,5 +27,6 @@ def init_formatter(config, mode, *args, **params):
 
         return formatter
     else:
-        logger.error("There is no formatter called %s, check your config." % which)
+        logger.error(
+            "There is no formatter called %s, check your config." % which)
         raise NotImplementedError

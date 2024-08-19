@@ -1,7 +1,12 @@
-from .output_tool import basic_output_function, null_output_function
+from .output_tool import (
+    basic_output_function,
+    null_output_function,
+    VisionOutputTool
+)
 
 output_function_dic = {
     "Basic": basic_output_function,
+    "CV": VisionOutputTool().cv_output_function,
     "Null": null_output_function
 }
 

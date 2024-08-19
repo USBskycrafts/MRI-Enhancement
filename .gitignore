@@ -10,3 +10,6 @@ config/default_local.config
 temp
 notebook
 result
+.vscode
+model/name
+tensorboard

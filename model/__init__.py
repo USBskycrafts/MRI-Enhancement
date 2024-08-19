@@ -1,7 +1,7 @@
-from .nlp.BasicBert import BasicBert
+from .cv.Ours import Ours
 
 model_list = {
-    "BasicBert": BasicBert
+    'Ours': Ours
 }
 
 
