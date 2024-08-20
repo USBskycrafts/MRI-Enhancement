@@ -165,20 +165,20 @@ def single_label_top2_accuracy(outputs, label, config, result=None):
     return result
 
 
-def calculate_psnr(outputs, gt, config, result):
+def calculate_psnr(outputs, gt, config, result=None):
     norm_max = config.getint("data", "norm_max")
     outputs = outputs.clamp(0, norm_max).cpu().detach()
     gt = gt.clamp(0, norm_max).cpu().detach()
     mse = nn.MSELoss()(outputs, gt)
     if mse == 0:
-        result.append(100)
-        return 100
-    psnr = 10 * torch.log10(norm_max / mse)
-    result.append(psnr)
+        return torch.Tensor(100).item()
+    psnr = 10 * torch.log10(norm_max / mse).item()
+    if result is not None:
+        result.append(psnr)
     return psnr
 
 
-def calculate_ssim(outputs, gt, config, result):
+def calculate_ssim(outputs, gt, config, result=None):
     norm_max = config.getint("data", "norm_max")
     outputs = outputs.clamp(0, norm_max).cpu().detach()
     gt = gt.clamp(0, norm_max).cpu().detach()
@@ -191,5 +191,7 @@ def calculate_ssim(outputs, gt, config, result):
     c2 = (0.03 * norm_max) ** 2
     ssim = ((2 * mean_x * mean_y + c1) * (2 * cov_xy + c2)) / \
         ((mean_x ** 2 + mean_y ** 2 + c1) * (var_x + var_y + c2))
-    result.append(ssim)
+    ssim = ssim.item()
+    if result is not None:
+        result.append(ssim)
     return ssim

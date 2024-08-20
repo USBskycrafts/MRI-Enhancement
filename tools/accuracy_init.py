@@ -1,3 +1,4 @@
+import json
 from .accuracy_tool import single_label_top1_accuracy, single_label_top2_accuracy, multi_label_accuracy, \
     null_accuracy_function, calculate_psnr, calculate_ssim
 
@@ -16,3 +17,14 @@ def init_accuracy_function(config, *args, **params):
         return accuracy_function_dic[name]
     else:
         raise NotImplementedError
+
+
+def init_accuracy_functions(config, *args, **params):
+    f = json.loads(config.get("output", "accuracy_methods"))
+    functions = {}
+    for name in f:
+        if name in accuracy_function_dic:
+            functions[name] = accuracy_function_dic[name]
+        else:
+            raise NotImplementedError
+    return functions
