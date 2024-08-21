@@ -23,6 +23,7 @@ class ProposedModel(nn.Module):
         # the loss for feature tokens
         self.cosine_sim = nn.ModuleList(
             nn.CosineSimilarity(dim=1) for _ in range(self.aug_num * (self.aug_num - 1) // 2))
+
         # the loss for the output of model
         self.terminal_loss = nn.ModuleList(
             nn.L1Loss() for _ in range(self.aug_num + 1))
