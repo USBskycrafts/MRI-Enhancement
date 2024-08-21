@@ -22,7 +22,7 @@ class ProposedModel(nn.Module):
 
         # the loss for feature tokens
         self.cosine_sim = nn.ModuleList(
-            nn.CosineSimilarity(dim=1) for _ in range(self.aug_num * (self.aug_num - 1) // 2))
+            nn.CosineSimilarity(dim=1) for _ in range(self.aug_num * (self.aug_num + 1) // 2))
 
         # the loss for the output of model
         self.terminal_loss = nn.ModuleList(
@@ -38,11 +38,10 @@ class ProposedModel(nn.Module):
                              acc_result, mode)["logits"]
             loss += self.terminal_loss[i](y, gt)
             tokens.append(features["token"])
-        for e1, e2 in itertools.combinations(tokens, 2):
+        for i, (e1, e2) in enumerate(itertools.combinations(tokens, 2)):
             # Shape of CosineSimilarity(e1, e2) is (batch_size, 1)
             # We sum it up to get the loss for each batch
-            loss += sum(list(map(lambda x: torch.sum(1 -
-                        x(e1, e2), dim=0), self.cosine_sim)))
+            loss += torch.sum(1 - self.cosine_sim[i](e1, e2), dim=0)
         return {
             "loss": loss,
             "acc_result": accumulate_cv_data({
