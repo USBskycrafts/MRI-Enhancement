@@ -1,7 +1,7 @@
-from .cv.Ours import Ours
+from .cv.net import ProposedModel
 
 model_list = {
-    'Ours': Ours
+    'Ours': ProposedModel,
 }
 
 
