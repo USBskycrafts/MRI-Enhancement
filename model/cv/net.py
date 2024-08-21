@@ -21,7 +21,7 @@ class ProposedModel(nn.Module):
         self.decoder = Decoder(config, gpu_list, *args, **params)
 
         # the loss for feature tokens
-        self.cosine_loss = nn.ModuleList(
+        self.cosine_sim = nn.ModuleList(
             nn.CosineSimilarity(dim=1) for _ in range(self.input_dim * (self.input_dim - 1) // 2))
         # the loss for the output of model
         self.terminal_loss = nn.ModuleList(
@@ -38,7 +38,7 @@ class ProposedModel(nn.Module):
             loss += self.terminal_loss[i](y, gt)
             tokens.append(features["token"])
         for e1, e2 in itertools.combinations(tokens, 2):
-            loss += sum(list(map(lambda x: x(e1, e2), self.cosine_loss)))
+            loss += sum(list(map(lambda x: 1 - x(e1, e2), self.cosine_sim)))
         return {
             "loss": loss,
             "acc_result": accumulate_cv_data({
