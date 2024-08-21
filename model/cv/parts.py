@@ -13,6 +13,10 @@ class Encoder(nn.Module):
         self.down2 = Down(128, 256)
         self.down3 = Down(256, 512)
         self.down4 = Down(512, 1024)
+        self.linear = nn.Sequential(
+            nn.Linear(1024, 4096),
+            nn.Softmax(dim=1),
+        )
 
     def forward(self, data, config, gpu_list, acc_result, mode):
         # data must be a clip of "origin" field
@@ -22,7 +26,9 @@ class Encoder(nn.Module):
         x4 = self.down3(x3)
         x5 = self.down4(x4)  # shape of x5 is [batch_size, 1024, *, *]
 
-        # shape of token is [batch_size, 1024, *]
+        token = self.linear(torch.permute(x5, (0, 2, 3, 1)))
+        token = torch.permute(token, (0, 3, 1, 2)).flatten(2)
+        # shape of token is [batch_size, 4096, *]
         token = torch.mean(x5.view(x5.size(0), x5.size(1), -1), dim=2)
         return {
             "x1": x1,

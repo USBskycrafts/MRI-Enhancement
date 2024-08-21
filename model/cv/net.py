@@ -11,6 +11,8 @@ class ProposedModel(nn.Module):
         super().__init__()
         # the dimension after data augmentation
         self.input_dim = config.getint("model", "input_dim")
+        # the augmentation method number
+        self.aug_num = config.getint("model", "aug_num")
         # output should be the dimension of the original data
         self.output_dim = config.getint("model", "output_dim")
 
@@ -23,7 +25,7 @@ class ProposedModel(nn.Module):
             nn.CosineSimilarity(dim=1) for _ in range(self.input_dim * (self.input_dim - 1) // 2))
         # the loss for the output of model
         self.terminal_loss = nn.ModuleList(
-            nn.L1Loss() for _ in range(self.output_dim))
+            nn.L1Loss() for _ in range(self.aug_num + 1))
 
     def forward(self, data, config, gpu_list, acc_result, mode):
         x, gt = data["origin"], data["target"]
