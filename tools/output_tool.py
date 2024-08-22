@@ -26,8 +26,8 @@ def cv_output_function(data, config, *args, **params):
     """
     psnr, ssim = data.values()
     return json.dumps({
-        "avg psnr": f"{sum(psnr) / len(psnr):<05}",
-        "min psnr": f"{min(psnr):<05}",
-        "avg ssim": f"{sum(ssim) / len(ssim):<06}",
-        "min ssim": f"{min(ssim):<06}"
+        "avg psnr": f"{sum(psnr) / len(psnr):<2.2f}",
+        "min psnr": f"{min(psnr):<2.2f}",
+        "avg ssim": f"{sum(ssim) / len(ssim) * 100:<2.2f}%",
+        "min ssim": f"{min(ssim) * 100:<2.2f}%",
     }, sort_keys=True)
