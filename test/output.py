@@ -1,5 +1,6 @@
 import unittest
 from tools.output_tool import cv_output_function
+from tools.eval_tool import output_value
 import random
 
 
@@ -12,6 +13,10 @@ class OutputTest(unittest.TestCase):
             'ssim': ssim
         }, None))
         return
+
+    def test_color(self):
+        output_value(1, "train", 3, 10, 0.1, {}, None, None)
+        output_value(1, "eval", 3, 10, 0.1, {}, None, None)
 
 
 if __name__ == '__main__':

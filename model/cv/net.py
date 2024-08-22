@@ -36,6 +36,8 @@ class ProposedModel(nn.Module):
             features = self.encoder(clip, config, gpu_list, acc_result, mode)
             y = self.decoder(features, config, gpu_list,
                              acc_result, mode)["logits"]
+            if i == 0:  # the original image among the augmented images
+                fake = y
             loss += self.terminal_loss[i](y, gt)
             tokens.append(features["token"])
         for i, (e1, e2) in enumerate(itertools.combinations(tokens, 2)):
@@ -45,8 +47,8 @@ class ProposedModel(nn.Module):
         return {
             "loss": loss,
             "acc_result": accumulate_cv_data({
-                "output": y,
+                "output": fake,
                 "gt": gt,
             }, acc_result, config, mode),
-            "output": torch.split(y, 1, dim=0) if mode == "test" else []
+            "output": torch.split(y, 1, dim=0)
         }

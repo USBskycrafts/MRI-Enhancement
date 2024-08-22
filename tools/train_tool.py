@@ -69,11 +69,11 @@ def train(parameters, config, gpu_list, do_test=False):
     gamma = config.getfloat("train", "lr_multiplier")
     exp_lr_scheduler = lr_scheduler.StepLR(
         optimizer, step_size=step_size, gamma=gamma)
-    exp_lr_scheduler.step(trained_epoch)
 
     logger.info("Training start....")
 
-    print("Epoch  Stage  Iterations  Time Usage    Loss    Output Information")
+    output_value("Epoch", "Stage", "Itertaions", "Time Usage",
+                 "Loss", "Output Information", None, config)
 
     total_len = len(dataset)
     more = ""
@@ -83,8 +83,6 @@ def train(parameters, config, gpu_list, do_test=False):
         model.train()
         start_time = timer()
         current_epoch = epoch_num
-
-        exp_lr_scheduler.step(current_epoch)
 
         acc_result = None
         total_loss = 0
@@ -108,7 +106,7 @@ def train(parameters, config, gpu_list, do_test=False):
 
             loss.backward()
             optimizer.step()
-
+            exp_lr_scheduler.step()
             if step % output_time == 0:
                 output_info = output_function(acc_result, config)
 
