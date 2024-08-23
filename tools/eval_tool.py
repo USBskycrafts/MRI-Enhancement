@@ -24,7 +24,7 @@ def output_value(epoch, mode, step, time, loss, info, end, config):
         delimiter = " "
     color = {
         "train": Fore.RED,
-        "eval": Fore.GREEN,
+        "valid": Fore.GREEN,
         "test": Fore.BLUE
     }
     s = color.get(mode, Fore.YELLOW) + Style.BRIGHT
