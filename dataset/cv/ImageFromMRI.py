@@ -12,9 +12,10 @@ class ImageFromMRI(Dataset):
         self.data_list = []
         self.origin_dir = config.get("data", "%s_origin_dir" % mode)
         self.gt_dir = config.get("data", "%s_gt_dir" % mode)
+        self.logger = logging.getLogger(__name__)
 
         origin_list, target_list = [], []
-        logging.info(f"""Loading {mode} data from {
+        self.logger.info(f"""Loading {mode} data from {
                      self.origin_dir} and {self.gt_dir}""")
         for file in os.listdir(self.origin_dir):
             if file.endswith(".nii"):
@@ -39,7 +40,7 @@ class ImageFromMRI(Dataset):
                 target_list.extend(tensors)
 
         assert (len(origin_list) == len(target_list))
-        logging.info(f"Total {len(origin_list)} {mode} data loaded")
+        self.logger.info(f"Total {len(origin_list)} {mode} data loaded")
         self.data_list = list(zip(origin_list, target_list))
         self.data_list = list(map(lambda x: {
             "origin": x[0],
