@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+import torch.nn.parameter as p
+import torch.nn.functional as F
 from model.unet.unet_parts import *
 
 
@@ -13,6 +15,8 @@ class Encoder(nn.Module):
         self.down2 = Down(128, 256)
         self.down3 = Down(256, 512)
         self.down4 = Down(512, 1024)
+        self.kernel = None
+        self.token_channel = 786
 
     def forward(self, data, config, gpu_list, acc_result, mode):
         # data must be a clip of "origin" field
@@ -22,9 +26,11 @@ class Encoder(nn.Module):
         x4 = self.down3(x3)
         x5 = self.down4(x4)  # shape of x5 is [batch_size, 1024, *, *]
 
-        token = torch.permute(x5, (0, 3, 1, 2)).flatten(2)
-        # shape of token is [batch_size, 1024, *]
-        token = torch.mean(x5.view(x5.size(0), x5.size(1), -1), dim=2)
+        # make use of dynamic computation graph
+        if self.kernel is None:
+            self.kernel = p.Parameter(torch.randn(
+                self.token_channel, x5.shape[1], x5.shape[2], x5.shape[3]).cuda())
+        token = F.conv2d(x5, self.kernel, stride=1, padding=0).squeeze()
         return {
             "x1": x1,
             "x2": x2,

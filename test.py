@@ -7,6 +7,7 @@ import json
 from tools.init_tool import init_all
 from config_parser import create_config
 from tools.test_tool import test
+from tools.render_tool import render_results
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
@@ -16,9 +17,11 @@ logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', '-c', help="specific config file", required=True)
+    parser.add_argument(
+        '--config', '-c', help="specific config file", required=True)
     parser.add_argument('--gpu', '-g', help="gpu id list")
-    parser.add_argument('--checkpoint', help="checkpoint file path", required=True)
+    parser.add_argument(
+        '--checkpoint', help="checkpoint file path", required=True)
     parser.add_argument('--result', help="result file path", required=True)
     args = parser.parse_args()
 
@@ -48,5 +51,7 @@ if __name__ == "__main__":
 
     parameters = init_all(config, gpu_list, args.checkpoint, "test")
 
-    json.dump(test(parameters, config, gpu_list), open(args.result, "w", encoding="utf8"), ensure_ascii=False,
+    result = test(parameters, config, gpu_list)
+    json.dump(result, open(args.result, "w", encoding="utf8"), ensure_ascii=False,
               sort_keys=True, indent=2)
+    render_results(result, config, None)

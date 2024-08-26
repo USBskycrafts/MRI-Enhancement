@@ -35,7 +35,7 @@ class Down(nn.Module):
         self.maxpool_conv = nn.Sequential(
             nn.MaxPool2d(2),
             DoubleConv(in_channels, out_channels),
-            nn.Dropout(0.3)
+            nn.Dropout(0.5)
         )
 
     def forward(self, x):
@@ -59,7 +59,7 @@ class Up(nn.Module):
             self.conv = DoubleConv(in_channels, out_channels)
         self.conv = nn.Sequential(
             self.conv,
-            nn.Dropout(0.3)
+            nn.Dropout(0.5)
         )
 
     def forward(self, x1, x2):
