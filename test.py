@@ -54,4 +54,3 @@ if __name__ == "__main__":
     result = test(parameters, config, gpu_list)
     json.dump(result, open(args.result, "w", encoding="utf8"), ensure_ascii=False,
               sort_keys=True, indent=2)
-    render_results(result, config, None)

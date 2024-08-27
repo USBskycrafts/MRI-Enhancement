@@ -1,7 +1,10 @@
+from collections import OrderedDict
+import logging
 import torch
 import torch.nn as nn
 import torch.nn.parameter as p
 import torch.nn.functional as F
+from typing import OrderedDict
 from model.unet.unet_parts import *
 
 
@@ -9,6 +12,7 @@ class Encoder(nn.Module):
     def __init__(self, config, gpu_list, *args, **params):
         super(Encoder, self).__init__()
         self.input_dim = config.getint("model", "input_dim")
+        self.gpu_list = gpu_list
 
         self.inc = DoubleConv(self.input_dim, 64)
         self.down1 = Down(64, 128)
@@ -17,6 +21,7 @@ class Encoder(nn.Module):
         self.down4 = Down(512, 1024)
         self.kernel = None
         self.token_channel = 786
+        self.logger = logging.getLogger("Encoder")
 
     def forward(self, data, config, gpu_list, acc_result, mode):
         # data must be a clip of "origin" field
@@ -28,8 +33,12 @@ class Encoder(nn.Module):
 
         # make use of dynamic computation graph
         if self.kernel is None:
-            self.kernel = p.Parameter(torch.randn(
-                self.token_channel, x5.shape[1], x5.shape[2], x5.shape[3]).cuda())
+            self.kernel = torch.randn(
+                self.token_channel, x5.shape[1], x5.shape[2], x5.shape[3], dtype=torch.float32)
+            if len(gpu_list) > 0:
+                self.kernel = self.kernel.to(
+                    torch.device(f"cuda:{gpu_list[0]}"))
+            self.kernel = p.Parameter(self.kernel)
         token = F.conv2d(x5, self.kernel, stride=1, padding=0).squeeze()
         return {
             "x1": x1,
@@ -39,6 +48,19 @@ class Encoder(nn.Module):
             "x5": x5,
             "token": token,
         }
+
+    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
+        if 'encoder.kernel' in state_dict:
+            self.logger.info("Load kernel from state dict")
+            # print(state_dict['encoder.kernel'])
+            self.kernel = state_dict['encoder.kernel']
+            if len(self.gpu_list) > 0:
+                self.kernel = p.Parameter(self.kernel.to(
+                    torch.device(f"cuda:{self.gpu_list[0]}"))
+                )
+            else:
+                self.kernel = p.Parameter(self.kernel.to(torch.device("cpu")))
+        return super()._load_from_state_dict(state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs)
 
 
 class Decoder(nn.Module):

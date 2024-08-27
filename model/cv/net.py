@@ -47,8 +47,8 @@ class ProposedModel(nn.Module):
         return {
             "loss": loss,
             "acc_result": accumulate_cv_data({
-                "output": fake,
-                "gt": gt,
+                "output": fake.cpu(),
+                "gt": gt.cpu(),
             }, acc_result, config, mode),
-            "output": torch.split(y, 1, dim=0)
+            "output": list(torch.split(fake.squeeze().cpu(), 1, dim=0))
         }

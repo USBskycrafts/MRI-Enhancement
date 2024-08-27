@@ -15,25 +15,27 @@ def init_all(config, gpu_list, checkpoint, mode, *args, **params):
     logger.info("Begin to initialize dataset and formatter...")
     if mode == "train":
         # init_formatter(config, ["train", "valid"], *args, **params)
-        result["train_dataset"], result["valid_dataset"] = init_dataset(config, *args, **params)
+        result["train_dataset"], result["valid_dataset"] = init_dataset(
+            config, *args, **params)
     else:
         # init_formatter(config, ["test"], *args, **params)
         result["test_dataset"] = init_test_dataset(config, *args, **params)
 
     logger.info("Begin to initialize models...")
 
-    model = get_model(config.get("model", "model_name"))(config, gpu_list, *args, **params)
+    model = get_model(config.get("model", "model_name"))(
+        config, gpu_list, *args, **params)
     optimizer = init_optimizer(model, config, *args, **params)
     trained_epoch = 0
     global_step = 0
 
     if len(gpu_list) > 0:
         model = model.cuda()
-
         try:
             model.init_multi_gpu(gpu_list, config, *args, **params)
         except Exception as e:
-            logger.warning("No init_multi_gpu implemented in the model, use single gpu instead.")
+            logger.warning(
+                "No init_multi_gpu implemented in the model, use single gpu instead.")
 
     try:
         parameters = torch.load(checkpoint)
@@ -44,7 +46,8 @@ def init_all(config, gpu_list, checkpoint, mode, *args, **params):
             if config.get("train", "optimizer") == parameters["optimizer_name"]:
                 optimizer.load_state_dict(parameters["optimizer"])
             else:
-                logger.warning("Optimizer changed, do not load parameters of optimizer.")
+                logger.warning(
+                    "Optimizer changed, do not load parameters of optimizer.")
 
             if "global_step" in parameters:
                 global_step = parameters["global_step"]

@@ -11,9 +11,10 @@ def cutout(data: torch.Tensor, config) -> torch.Tensor:
     start_x, start_y = random.randint(
         0, img_x - mask_size[0]), random.randint(0, img_y - mask_size[1])
     # mask as black
-    data[:, start_x: start_x + mask_size[0],
-         start_y: start_y + mask_size[1]] = 0
-    return data
+    cut = data.clone().detach()
+    cut[:, start_x: start_x + mask_size[0],
+        start_y: start_y + mask_size[1]] = 0
+    return cut
 
 
 def sobel_edge(data: torch.Tensor, config) -> torch.Tensor:

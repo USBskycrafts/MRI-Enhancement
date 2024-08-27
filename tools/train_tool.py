@@ -1,6 +1,7 @@
 import logging
 import os
 import torch
+import time
 from torch.autograd import Variable
 from torch.optim import lr_scheduler
 from tensorboardX import SummaryWriter
@@ -37,8 +38,9 @@ def train(parameters, config, gpu_list, do_test=False):
     output_time = config.getint("output", "output_time")
     test_time = config.getint("output", "test_time")
 
-    output_path = os.path.join(config.get(
-        "output", "model_path"), config.get("output", "model_name"))
+    output_path = os.path.join(config.get("output", "model_path"),
+                               config.get("output", "model_name"),
+                               time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime()))
     if os.path.exists(output_path):
         logger.warning(
             "Output path exists, check whether need to change a name of model")
@@ -59,10 +61,15 @@ def train(parameters, config, gpu_list, do_test=False):
         shutil.rmtree(
             os.path.join(config.get("output", "tensorboard_path"), config.get("output", "model_name")), True)
 
-    os.makedirs(os.path.join(config.get("output", "tensorboard_path"), config.get("output", "model_name")),
-                exist_ok=True)
+    tensorboard_path = os.path.join(config.get("output", "tensorboard_path"),
+                                    config.get("output", "model_name"),
+                                    time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime()))
+    if os.path.exists(tensorboard_path):
+        logger.warning(
+            "Tensorboard path exists, check whether need to change a name of model")
+    os.makedirs(tensorboard_path, exist_ok=True)
 
-    writer = SummaryWriter(os.path.join(config.get("output", "tensorboard_path"), config.get("output", "model_name")),
+    writer = SummaryWriter(tensorboard_path,
                            config.get("output", "model_name"))
 
     step_size = config.getint("train", "step_size")
