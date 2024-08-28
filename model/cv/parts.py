@@ -19,7 +19,6 @@ class Encoder(nn.Module):
         self.down2 = Down(128, 256)
         self.down3 = Down(256, 512)
         self.down4 = Down(512, 1024)
-        self.kernel = None
         self.token_channel = 786
         self.logger = logging.getLogger("Encoder")
 
@@ -31,42 +30,19 @@ class Encoder(nn.Module):
         x4 = self.down3(x3)
         x5 = self.down4(x4)  # shape of x5 is [batch_size, 1024, *, *]
 
-        # make use of dynamic computation graph
-        if self.kernel is None:
-            self.kernel = torch.randn(
-                self.token_channel, x5.shape[1], x5.shape[2], x5.shape[3], dtype=torch.float32)
-            if len(gpu_list) > 0:
-                self.kernel = self.kernel.to(
-                    torch.device(f"cuda:{gpu_list[0]}"))
-            self.kernel = p.Parameter(self.kernel)
-        token = F.conv2d(x5, self.kernel, stride=1, padding=0).squeeze()
         return {
             "x1": x1,
             "x2": x2,
             "x3": x3,
             "x4": x4,
             "x5": x5,
-            "token": token,
         }
-
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
-        if 'encoder.kernel' in state_dict:
-            self.logger.info("Load kernel from state dict")
-            # print(state_dict['encoder.kernel'])
-            self.kernel = state_dict['encoder.kernel']
-            if len(self.gpu_list) > 0:
-                self.kernel = p.Parameter(self.kernel.to(
-                    torch.device(f"cuda:{self.gpu_list[0]}"))
-                )
-            else:
-                self.kernel = p.Parameter(self.kernel.to(torch.device("cpu")))
-        return super()._load_from_state_dict(state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs)
 
 
 class Decoder(nn.Module):
     def __init__(self, config, gpu_list, *args, **params):
         super(Decoder, self).__init__()
-        self.output_dim = config.getint("model", "output_dim")
+        self.output_dim = params["output_dim"]
         self.up1 = Up(1024, 512)
         self.up2 = Up(512, 256)
         self.up3 = Up(256, 128)
@@ -75,12 +51,10 @@ class Decoder(nn.Module):
 
     def forward(self, data: dict, config, gpu_list, acc_result, mode):
         # data must be the output of encoder
-        x1, x2, x3, x4, x5, _ = data.values()
+        x1, x2, x3, x4, x5 = data.values()
         x = self.up1(x5, x4)
         x = self.up2(x, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         logits = self.outc(x)
-        return {
-            "logits": logits
-        }
+        return logits

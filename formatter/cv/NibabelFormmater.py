@@ -15,13 +15,15 @@ class NibabelFormmater(BasicFormatter):
         self.mode = mode
 
     def process(self, data, config, mode, *args, **params):
-        origin_list = list(
-            map(lambda x: x["origin"], data))
-        target_list = list(
-            map(lambda x: x["target"], data))
-        origin_list = list(map(lambda x: torch.cat(
-            [x, sobel_edge(x, config), cutout(x, config)], dim=0), origin_list))
+        t1_list = list(
+            map(lambda x: x["t1"], data))
+        t2_list = list(
+            map(lambda x: x["t2"], data)
+        )
+        t1ce_list = list(
+            map(lambda x: x["t1ce"], data))
         return {
-            "origin": torch.stack(origin_list, dim=0),
-            "target": torch.stack(target_list, dim=0)
+            "t1": torch.stack(t1_list, dim=0),
+            "t2": torch.stack(t2_list, dim=0),
+            "t1ce": torch.stack(t1ce_list, dim=0)
         }

@@ -1,13 +1,15 @@
-import threading
-import torch
-from typing import List, Dict
 import matplotlib.pyplot as plt
-import logging
-import os
+from typing import List, Dict
+import torch
+import threading
+import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
+import os
+import logging
+import matplotlib
 
 
-def render_results(origin, gt, result: List[torch.Tensor], config, *args, **params):
+def render_results(origin, gt, result: List[torch.Tensor], batch, config, *args, **params):
     """Render results from the model
 
     Args:
@@ -20,36 +22,40 @@ def render_results(origin, gt, result: List[torch.Tensor], config, *args, **para
         o = torch.permute(o, (1, 2, 0))
         t = torch.permute(t, (1, 2, 0))
         r = torch.permute(r, (1, 2, 0))
-        lock.acquire()
+        # with lock:
         plt.subplot(2, 2, 1)
         plt.imshow(o.cpu().numpy(), cmap="gray")
         plt.subplot(2, 2, 2)
         plt.imshow(t.cpu().numpy(), cmap="gray")
         plt.subplot(2, 2, 3)
         plt.imshow(r.cpu().numpy(), cmap="gray")
-        plt.savefig(f"{render_path}/{i}.png")
-        lock.release()
+        plt.savefig(f"{render_path}/{batch}-{i}.png",
+                    dpi=600, bbox_inches='tight')
     return
 
 
 class ResultRenderer:
     def __init__(self, config):
         self.config = config
-        self.executor = ThreadPoolExecutor(max_workers=1)
+        self.executor = ThreadPoolExecutor(max_workers=32)
         self.logger = logging.getLogger(__name__)
         self.lock = threading.Lock()
         if not os.path.exists(config.get("test", "render_path")):
             os.makedirs(config.get("test", "render_path"))
+        self.futures = []
 
     def __del__(self):
-        self.executor.shutdown(wait=True)
+        concurrent.futures.wait(self.futures)
 
-    def render_results(self, data: Dict[str, torch.Tensor], result: List[torch.Tensor], *args, **params):
-        def task():
-            origin = data["origin"].cpu()
-            target = data["target"].cpu()
-            origin = origin[:, 0, :, :].split(1, dim=0)
-            target = target[:, 0, :, :].split(1, dim=0)
-            render_results(origin, target, result,
+    def render_results(self, data: Dict[str, torch.Tensor], result: List[torch.Tensor], batch,  *args, **params):
+        def task(data, result):
+            t1 = torch.detach(data["t1"].cpu()).squeeze()
+            t1ce = torch.detach(data["t1ce"].cpu()).squeeze()
+            t1 = t1.split(1, dim=0)
+            t1ce = t1ce.split(1, dim=0)
+
+            render_results(t1, t1ce, result, batch,
                            self.config, *args, lock=self.lock, **params)
-        self.executor.submit(task)
+        future = self.executor.submit(task, data, result)
+        self.futures.append(future)
+        # task(data, result)

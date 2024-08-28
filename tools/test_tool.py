@@ -4,15 +4,17 @@ import torch
 from torch.autograd import Variable
 from timeit import default_timer as timer
 from tools.render_tool import ResultRenderer
+from typing import Dict
 
 from tools.eval_tool import gen_time_str, output_value
 
 logger = logging.getLogger(__name__)
 
 
-def test(parameters, config, gpu_list):
+def test(parameters: Dict, config, gpu_list):
     model = parameters["model"]
     dataset = parameters["test_dataset"]
+    parameters.clear()
     model.eval()
 
     acc_result = None
@@ -26,7 +28,6 @@ def test(parameters, config, gpu_list):
     output_time = config.getint("output", "output_time")
     step = -1
     result = []
-
     for step, data in enumerate(dataset):
         for key in data.keys():
             if isinstance(data[key], torch.Tensor):
@@ -34,18 +35,17 @@ def test(parameters, config, gpu_list):
                     data[key] = Variable(data[key].cuda())
                 else:
                     data[key] = Variable(data[key])
-
         results = model(data, config, gpu_list, acc_result, "test")
-        # result = result + results["output"]
+        result = result + results["output"]
         cnt += 1
 
+        renderer.render_results(data, results["output"], step, config)
         if step % output_time == 0:
             delta_t = timer() - start_time
 
             output_value(0, "test", "%d/%d" % (step + 1, total_len), "%s/%s" % (
                 gen_time_str(delta_t), gen_time_str(delta_t * (total_len - step - 1) / (step + 1))),
                 "%.3lf" % (total_loss / (step + 1)), output_info, '\r', config)
-            renderer.render_results(data, result, config)
 
     if step == -1:
         logger.error(
@@ -58,4 +58,4 @@ def test(parameters, config, gpu_list):
         gen_time_str(delta_t), gen_time_str(delta_t * (total_len - step - 1) / (step + 1))),
         "%.3lf" % (total_loss / (step + 1)), output_info, None, config)
 
-    return result
+    return None

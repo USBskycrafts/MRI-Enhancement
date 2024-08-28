@@ -18,37 +18,38 @@ class ProposedModel(nn.Module):
 
         # encoder and decoder are the skeleton of the model
         self.encoder = Encoder(config, gpu_list, *args, **params)
-        self.decoder = Decoder(config, gpu_list, *args, **params)
+        self.decoder = Decoder(config, gpu_list, *args, output_dim=2, **params)
+        self.loss = nn.ModuleList([nn.L1Loss()
+                                  for _ in range(4)])
 
-        # the loss for feature tokens
-        self.cosine_sim = nn.ModuleList(
-            nn.CosineSimilarity(dim=1) for _ in range(self.aug_num * (self.aug_num + 1) // 2))
-
-        # the loss for the output of model
-        self.terminal_loss = nn.ModuleList(
-            nn.L1Loss() for _ in range(self.aug_num + 1))
+        self.enhancement = nn.ModuleList(
+            [Encoder(config, gpu_list, *args, **params),
+             Decoder(config, gpu_list, *args, output_dim=1, **params)]
+        )
 
     def forward(self, data, config, gpu_list, acc_result, mode):
-        x, gt = data["origin"], data["target"]
+        t1, t2, t1ce = data["t1"], data["t2"], data["t1ce"]
         loss = 0
-        tokens = []
-        for i, clip in enumerate(torch.split(x, 1, dim=1)):
-            features = self.encoder(clip, config, gpu_list, acc_result, mode)
-            y = self.decoder(features, config, gpu_list,
-                             acc_result, mode)["logits"]
-            if i == 0:  # the original image among the augmented images
-                fake = y
-            loss += self.terminal_loss[i](y, gt)
-            tokens.append(features["token"])
-        for i, (e1, e2) in enumerate(itertools.combinations(tokens, 2)):
-            # Shape of CosineSimilarity(e1, e2) is (batch_size, 1)
-            # We sum it up to get the loss for each batch
-            loss += torch.sum(1 - self.cosine_sim[i](e1, e2), dim=0)
+        data = self.encoder(t2, config, gpu_list, acc_result, mode)
+        result = self.decoder(data, config, gpu_list, acc_result, mode)
+        NH_T2, T2 = torch.split(result, 1, dim=1)
+        loss += self.loss[0](NH_T2 * torch.exp(-T2), t2)
+        data = self.encoder(t1, config, gpu_list, acc_result, mode)
+        result = self.decoder(data, config, gpu_list, acc_result, mode)
+        NH_T1, T1 = torch.split(result, 1, dim=1)
+        loss += self.loss[1](NH_T1 * (1 - torch.exp(-T1)), t1)
+        loss += self.loss[2](NH_T1, NH_T2)
+
+        data = self.enhancement[0](T1, config, gpu_list, acc_result, mode)
+        T1CE = self.enhancement[1](data, config, gpu_list, acc_result, mode)
+        fake = NH_T1 * (1 - torch.exp(-T1CE))
+        loss += self.loss[3](fake, t1ce)
+
         return {
             "loss": loss,
             "acc_result": accumulate_cv_data({
-                "output": fake.cpu(),
-                "gt": gt.cpu(),
+                "output": fake.detach(),
+                "gt": t1ce.detach(),
             }, acc_result, config, mode),
-            "output": list(torch.split(fake.squeeze().cpu(), 1, dim=0))
+            "output": list(torch.split(fake.squeeze().cpu().detach(), 1, dim=0))
         }

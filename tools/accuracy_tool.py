@@ -171,7 +171,7 @@ def calculate_psnr(outputs, gt, config, result=None):
     gt = gt.clamp(0, norm_max).cpu().detach()
     mse = nn.MSELoss()(outputs, gt)
     if mse == 0:
-        return torch.Tensor(100).item()
+        return torch.Tensor([100]).item()
     psnr = 10 * torch.log10(norm_max / mse).item()
     if result is not None:
         result.append(psnr)
