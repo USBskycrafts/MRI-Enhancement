@@ -36,6 +36,7 @@ def test(parameters, config, gpu_list):
                     data[key] = Variable(data[key])
 
         results = model(data, config, gpu_list, acc_result, "test")
+        renderer.render_results(data, results["output"], step)
         result = result + results["output"]
         cnt += 1
 
@@ -51,11 +52,9 @@ def test(parameters, config, gpu_list):
             "There is no data given to the model in this epoch, check your data.")
         raise NotImplementedError
 
-    renderer.render_results(data, result, config)
     delta_t = timer() - start_time
     output_info = "testing"
     output_value(0, "test", "%d/%d" % (step + 1, total_len), "%s/%s" % (
         gen_time_str(delta_t), gen_time_str(delta_t * (total_len - step - 1) / (step + 1))),
         "%.3lf" % (total_loss / (step + 1)), output_info, None, config)
-
     return None
