@@ -54,6 +54,7 @@ def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode
     renderer = ResultRenderer(config)
 
     output_time = config.getint("output", "output_time")
+    output = []
     step = -1
     more = ""
     if total_len < 10000:
@@ -68,7 +69,7 @@ def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode
                     data[key] = Variable(data[key])
 
         results = model(data, config, gpu_list, acc_result, "valid")
-
+        output = [output, results["output"]]
         loss, acc_result = results["loss"], results["acc_result"]
         total_loss += float(loss)
         cnt += 1
@@ -79,12 +80,13 @@ def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode
             output_value(epoch, mode, "%d/%d" % (step + 1, total_len), "%s/%s" % (
                 gen_time_str(delta_t), gen_time_str(delta_t * (total_len - step - 1) / (step + 1))),
                 "%.3lf" % (total_loss / (step + 1)), output_info, '\r', config)
-            renderer.render_results(data, results["output"])
 
     if step == -1:
         logger.error(
             "There is no data given to the model in this epoch, check your data.")
         raise NotImplementedError
+
+    renderer.render_results(data, output)
 
     delta_t = timer() - start_time
     output_info = output_function(acc_result, config)

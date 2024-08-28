@@ -17,7 +17,7 @@ class ImageFromMRI(Dataset):
         origin_list, target_list = [], []
         self.logger.info(f"""Loading {mode} data from {
                      self.origin_dir} and {self.gt_dir}""")
-        for file in os.listdir(self.origin_dir):
+        for file in sorted(os.listdir(self.origin_dir)):
             if file.endswith(".nii"):
                 path = os.path.join(self.origin_dir, file)
                 data = nib.load(path).get_fdata()  # type: ignore
@@ -28,7 +28,7 @@ class ImageFromMRI(Dataset):
                 tensors = tensor.split(1, dim=0)
                 origin_list.extend(tensors)
 
-        for file in os.listdir(self.gt_dir):
+        for file in sorted(os.listdir(self.gt_dir)):
             if file.endswith(".nii"):
                 path = os.path.join(self.gt_dir, file)
                 data = nib.load(path).get_fdata()  # type: ignore

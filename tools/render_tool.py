@@ -27,7 +27,7 @@ def render_results(origin, gt, result: List[torch.Tensor], config, *args, **para
         plt.imshow(t.cpu().numpy(), cmap="gray")
         plt.subplot(2, 2, 3)
         plt.imshow(r.cpu().numpy(), cmap="gray")
-        plt.savefig(f"{render_path}/{i}.png")
+        plt.savefig(f"{render_path}/{i}.png", bbox_inches='tight', dpi=600)
         lock.release()
     return
 
@@ -35,7 +35,7 @@ def render_results(origin, gt, result: List[torch.Tensor], config, *args, **para
 class ResultRenderer:
     def __init__(self, config):
         self.config = config
-        self.executor = ThreadPoolExecutor(max_workers=1)
+        self.executor = ThreadPoolExecutor(max_workers=32)
         self.logger = logging.getLogger(__name__)
         self.lock = threading.Lock()
         if not os.path.exists(config.get("test", "render_path")):
@@ -46,10 +46,11 @@ class ResultRenderer:
 
     def render_results(self, data: Dict[str, torch.Tensor], result: List[torch.Tensor], *args, **params):
         def task():
-            origin = data["origin"].cpu()
-            target = data["target"].cpu()
+            origin = data["origin"].cpu().detach()
+            target = data["target"].cpu().detach()
             origin = origin[:, 0, :, :].split(1, dim=0)
             target = target[:, 0, :, :].split(1, dim=0)
-            render_results(origin, target, result,
+            render_results(origin, target, list(map(lambda x: x.cpu().detach(), result)),
                            self.config, *args, lock=self.lock, **params)
-        self.executor.submit(task)
+        # self.executor.submit(task)
+        task()
