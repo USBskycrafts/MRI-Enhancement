@@ -45,8 +45,6 @@ class ImageFromMRI(Dataset):
                 path = os.path.join(self.t1ce_dir, file)
                 data = nib.load(path).get_fdata()  # type: ignore
                 tensor = torch.tensor(data)
-                tensor = (tensor - tensor.min()) / \
-                    (tensor.max() - tensor.min())
                 tensor = torch.permute(tensor, (2, 0, 1)).float()
                 tensors = tensor.split(1, dim=0)
                 t1ce_list.extend(tensors)

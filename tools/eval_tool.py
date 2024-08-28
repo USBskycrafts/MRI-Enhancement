@@ -33,7 +33,7 @@ def output_value(epoch, mode, step, time, loss, info, end, config):
     s += "{:<5}".format(str(mode)) + " "
     s += "{:<15}".format(str(step)) + " "
     s += "{:<15}".format(str(time)) + " "
-    s += "{:<6}".format(str(loss) + " ")
+    s += "{:<15}".format(str(loss) + " ")
     s += str(info) + Style.RESET_ALL
     s = s.replace(" ", delimiter)
     if not (end is None):
@@ -73,10 +73,10 @@ def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode
         total_loss += float(loss)
         cnt += 1
 
-        renderer.render_results(data, results["output"], step)
         if step % output_time == 0:
             delta_t = timer() - start_time
             output_info = output_function(acc_result, config)
+            renderer.render_results(data, results["output"], step)
             output_value(epoch, mode, "%d/%d" % (step + 1, total_len), "%s/%s" % (
                 gen_time_str(delta_t), gen_time_str(delta_t * (total_len - step - 1) / (step + 1))),
                 "%.3lf" % (total_loss / (step + 1)), output_info, '\r', config)
