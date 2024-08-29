@@ -1,7 +1,7 @@
 import logging
 import torch
 import torch.nn as nn
-
+from ignite.metrics import PSNR, SSIM
 
 logger = logging.Logger(__name__)
 
@@ -167,31 +167,13 @@ def single_label_top2_accuracy(outputs, label, config, result=None):
 
 def calculate_psnr(outputs, gt, config, result=None):
     norm_max = config.getint("data", "norm_max")
-    outputs = outputs.clamp(0, norm_max).cpu().detach()
-    gt = gt.clamp(0, norm_max).cpu().detach()
-    mse = nn.MSELoss()(outputs, gt)
-    if mse == 0:
-        return torch.Tensor([100]).item()
-    psnr = 10 * torch.log10(norm_max / mse).item()
-    if result is not None:
-        result.append(psnr)
-    return psnr
+    psnr = PSNR(data_range=norm_max)
+    psnr.update([outputs, gt])
+    return psnr.compute()
 
 
 def calculate_ssim(outputs, gt, config, result=None):
     norm_max = config.getint("data", "norm_max")
-    outputs = outputs.clamp(0, norm_max).cpu().detach()
-    gt = gt.clamp(0, norm_max).cpu().detach()
-    mean_x = torch.mean(outputs)
-    mean_y = torch.mean(gt)
-    var_x = torch.var(outputs)
-    var_y = torch.var(gt)
-    cov_xy = torch.mean((outputs - mean_x) * (gt - mean_y))
-    c1 = (0.01 * norm_max) ** 2
-    c2 = (0.03 * norm_max) ** 2
-    ssim = ((2 * mean_x * mean_y + c1) * (2 * cov_xy + c2)) / \
-        ((mean_x ** 2 + mean_y ** 2 + c1) * (var_x + var_y + c2))
-    ssim = ssim.item()
-    if result is not None:
-        result.append(ssim)
-    return ssim
+    ssim = SSIM(data_range=norm_max)
+    ssim.update([outputs, gt])
+    return ssim.compute()

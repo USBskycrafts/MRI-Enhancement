@@ -39,10 +39,9 @@ def test(parameters: Dict, config, gpu_list):
         result = result + results["output"]
         cnt += 1
 
-        renderer.render_results(data, results["output"], step, config)
         if step % output_time == 0:
             delta_t = timer() - start_time
-
+            renderer.render_results(data, results["output"], step, config)
             output_value(0, "test", "%d/%d" % (step + 1, total_len), "%s/%s" % (
                 gen_time_str(delta_t), gen_time_str(delta_t * (total_len - step - 1) / (step + 1))),
                 "%.3lf" % (total_loss / (step + 1)), output_info, '\r', config)

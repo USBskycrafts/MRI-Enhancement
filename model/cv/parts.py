@@ -14,12 +14,11 @@ class Encoder(nn.Module):
         self.input_dim = config.getint("model", "input_dim")
         self.gpu_list = gpu_list
 
-        self.inc = DoubleConv(self.input_dim, 64)
-        self.down1 = Down(64, 128)
-        self.down2 = Down(128, 256)
-        self.down3 = Down(256, 512)
-        self.down4 = Down(512, 1024)
-        self.token_channel = 786
+        self.inc = DoubleConv(self.input_dim, self.input_dim * 16)
+        self.down1 = Down(self.input_dim * 16, self.input_dim * 32)
+        self.down2 = Down(self.input_dim * 32, self.input_dim * 64)
+        self.down3 = Down(self.input_dim * 64, self.input_dim * 128)
+        self.down4 = Down(self.input_dim * 128, self.input_dim * 256)
         self.logger = logging.getLogger("Encoder")
 
     def forward(self, data, config, gpu_list, acc_result, mode):
@@ -43,11 +42,11 @@ class Decoder(nn.Module):
     def __init__(self, config, gpu_list, *args, **params):
         super(Decoder, self).__init__()
         self.output_dim = params["output_dim"]
-        self.up1 = Up(1024, 512)
-        self.up2 = Up(512, 256)
-        self.up3 = Up(256, 128)
-        self.up4 = Up(128, 64)
-        self.outc = OutConv(64, self.output_dim)
+        self.up1 = Up(self.output_dim * 256, self.output_dim * 128)
+        self.up2 = Up(self.output_dim * 128, self.output_dim * 64)
+        self.up3 = Up(self.output_dim * 64, self.output_dim * 32)
+        self.up4 = Up(self.output_dim * 32, self.output_dim * 16)
+        self.outc = OutConv(self.output_dim * 16, self.output_dim)
 
     def forward(self, data: dict, config, gpu_list, acc_result, mode):
         # data must be the output of encoder

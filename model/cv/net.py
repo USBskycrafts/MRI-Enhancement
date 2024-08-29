@@ -18,32 +18,57 @@ class ProposedModel(nn.Module):
 
         # encoder and decoder are the skeleton of the model
         self.encoder = Encoder(config, gpu_list, *args, **params)
-        self.decoder = Decoder(config, gpu_list, *args, output_dim=2, **params)
+        self.decoder1 = Decoder(config, gpu_list, *args,
+                                output_dim=self.input_dim, **params)
+        self.decoder2 = Decoder(config, gpu_list, *args,
+                                output_dim=self.input_dim, **params)
         self.loss = nn.ModuleList([nn.L1Loss()
                                   for _ in range(4)])
 
+        self.mlp = nn.Sequential(
+            nn.Linear(self.output_dim, 256),
+            nn.ReLU(),
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Linear(256, 1),
+        )
+
+        self.cross_entropy = nn.ModuleList(
+            [nn.CrossEntropyLoss() for _ in range(3)]
+        )
+
         self.enhancement = nn.ModuleList(
             [Encoder(config, gpu_list, *args, **params),
-             Decoder(config, gpu_list, *args, output_dim=1, **params)]
+             Decoder(config, gpu_list, *args, output_dim=self.input_dim, **params)]
         )
 
     def forward(self, data, config, gpu_list, acc_result, mode):
         t1, t2, t1ce = data["t1"], data["t2"], data["t1ce"]
         loss = 0
         data = self.encoder(t2, config, gpu_list, acc_result, mode)
-        result = self.decoder(data, config, gpu_list, acc_result, mode)
-        NH_T2, T2 = torch.split(result, 1, dim=1)
+        NH_T2 = self.decoder1(data, config, gpu_list, acc_result, mode)
+        T2 = self.decoder2(data, config, gpu_list, acc_result, mode)
         loss += self.loss[0](NH_T2 * torch.exp(-T2), t2)
         data = self.encoder(t1, config, gpu_list, acc_result, mode)
-        result = self.decoder(data, config, gpu_list, acc_result, mode)
-        NH_T1, T1 = torch.split(result, 1, dim=1)
+        NH_T1 = self.decoder1(data, config, gpu_list, acc_result, mode)
+        T1 = self.decoder2(data, config, gpu_list, acc_result, mode)
         loss += self.loss[1](NH_T1 * (1 - torch.exp(-T1)), t1)
         loss += self.loss[2](NH_T1, NH_T2)
 
         data = self.enhancement[0](T1, config, gpu_list, acc_result, mode)
         T1CE = self.enhancement[1](data, config, gpu_list, acc_result, mode)
         fake = NH_T1 * (1 - torch.exp(-T1CE))
-        loss += self.loss[3](fake, t1ce)
+        loss += self.loss[3](fake, t1ce) * 0.1
+
+        # discriminator
+        d_fake = fake.detach().view(-1, self.output_dim)
+        d_real = t1ce.view(-1, self.output_dim)
+        loss_d = self.cross_entropy[0](
+            self.mlp(d_fake), torch.zeros_like(d_fake)) + self.cross_entropy[1](
+            self.mlp(d_real), torch.ones_like(d_real))
+        loss_g = self.cross_entropy[1](
+            self.mlp(d_fake), torch.ones_like(d_fake))
+        loss += loss_d + loss_g
 
         return {
             "loss": loss,

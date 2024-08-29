@@ -14,6 +14,8 @@ class ImageFromMRI(Dataset):
         self.t2_dir = config.get("data", "%s_t2_dir" % mode)
         self.t1ce_dir = config.get("data", "%s_t1ce_dir" % mode)
         self.logger = logging.getLogger(__name__)
+        self.input_dim = config.getint("model", "input_dim")
+        self.output_dim = config.getint("model", "output_dim")
 
         t1_list, t2_list, t1ce_list = [], [], []
         self.logger.info(f"""Loading {mode} data from {
@@ -26,7 +28,9 @@ class ImageFromMRI(Dataset):
                 tensor = (tensor - tensor.min()) / \
                     (tensor.max() - tensor.min())
                 tensor = torch.permute(tensor, (2, 0, 1)).float()
-                tensors = tensor.split(1, dim=0)
+                tensors = list(torch.split(tensor, self.input_dim, dim=0))
+                if tensors[-1].shape[0] < self.input_dim:
+                    tensors.pop()
                 t1_list.extend(tensors)
 
         for file in sorted(os.listdir(self.t2_dir)):
@@ -37,7 +41,9 @@ class ImageFromMRI(Dataset):
                 tensor = (tensor - tensor.min()) / \
                     (tensor.max() - tensor.min())
                 tensor = torch.permute(tensor, (2, 0, 1)).float()
-                tensors = tensor.split(1, dim=0)
+                tensors = list(torch.split(tensor, self.input_dim, dim=0))
+                if tensors[-1].shape[0] < self.input_dim:
+                    tensors.pop()
                 t2_list.extend(tensors)
 
         for file in sorted(os.listdir(self.t1ce_dir)):
@@ -45,8 +51,12 @@ class ImageFromMRI(Dataset):
                 path = os.path.join(self.t1ce_dir, file)
                 data = nib.load(path).get_fdata()  # type: ignore
                 tensor = torch.tensor(data)
+                tensor = (tensor - tensor.min()) / \
+                    (tensor.max() - tensor.min())
                 tensor = torch.permute(tensor, (2, 0, 1)).float()
-                tensors = tensor.split(1, dim=0)
+                tensors = list(torch.split(tensor, self.input_dim, dim=0))
+                if tensors[-1].shape[0] < self.input_dim:
+                    tensors.pop()
                 t1ce_list.extend(tensors)
 
         assert (len(t1_list) == len(t1ce_list)
