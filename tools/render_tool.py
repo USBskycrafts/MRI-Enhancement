@@ -25,11 +25,14 @@ def render_results(origin, gt, result: List[torch.Tensor], batch, config, *args,
     t = torch.permute(t, (1, 2, 0))
     r = torch.permute(r, (1, 2, 0))
     # with lock:
-    plt.subplot(2, 2, 1)
+    ax = plt.subplot(2, 2, 1)
+    ax.set_title("T1")
     plt.imshow(o.cpu().numpy(), cmap="gray")
-    plt.subplot(2, 2, 2)
+    bx = plt.subplot(2, 2, 2)
+    bx.set_title("T1CE")
     plt.imshow(t.cpu().numpy(), cmap="gray")
-    plt.subplot(2, 2, 3)
+    cx = plt.subplot(2, 2, 3)
+    cx.set_title("Result")
     plt.imshow(r.cpu().numpy(), cmap="gray")
     plt.savefig(f"{render_path}/{batch}.png",
                 dpi=600, bbox_inches='tight')

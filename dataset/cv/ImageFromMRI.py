@@ -2,6 +2,8 @@ import os
 import nibabel as nib
 import torch
 import logging
+from tools.augmentation_tool import crop_to_list
+from itertools import chain
 from torch.utils.data import Dataset
 
 
@@ -20,6 +22,7 @@ class ImageFromMRI(Dataset):
         t1_list, t2_list, t1ce_list = [], [], []
         self.logger.info(f"""Loading {mode} data from {
                      self.t1_dir} and {self.t1ce_dir} and {self.t2_dir}""")
+
         for file in sorted(os.listdir(self.t1_dir)):
             if file.endswith(".nii"):
                 path = os.path.join(self.t1_dir, file)
@@ -32,7 +35,13 @@ class ImageFromMRI(Dataset):
                 if tensors[-1].shape[0] < self.input_dim:
                     tensors.pop()
                 t1_list.extend(tensors)
-
+        # print(len(t1_list))
+        # print(t1_list[0].shape)
+        if mode == "train":
+            t1_list = sum(
+                list(map(lambda x: crop_to_list(x, config), t1_list)), [])
+        # print(len(t1_list))
+        # print(t1_list[0].shape)
         for file in sorted(os.listdir(self.t2_dir)):
             if file.endswith(".nii"):
                 path = os.path.join(self.t2_dir, file)
@@ -45,7 +54,9 @@ class ImageFromMRI(Dataset):
                 if tensors[-1].shape[0] < self.input_dim:
                     tensors.pop()
                 t2_list.extend(tensors)
-
+        if mode == "train":
+            t2_list = sum(
+                list(map(lambda x: crop_to_list(x, config), t2_list)), [])
         for file in sorted(os.listdir(self.t1ce_dir)):
             if file.endswith(".nii"):
                 path = os.path.join(self.t1ce_dir, file)
@@ -58,7 +69,9 @@ class ImageFromMRI(Dataset):
                 if tensors[-1].shape[0] < self.input_dim:
                     tensors.pop()
                 t1ce_list.extend(tensors)
-
+        if mode == "train":
+            t1ce_list = sum(
+                list(map(lambda x: crop_to_list(x, config), t1ce_list)), [])
         assert (len(t1_list) == len(t1ce_list)
                 and len(t1_list) == len(t2_list))
         self.logger.info(f"Total {len(t1_list)} {mode} data loaded")

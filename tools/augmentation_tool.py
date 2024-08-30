@@ -24,3 +24,13 @@ def sobel_edge(data: torch.Tensor, config) -> torch.Tensor:
     data = torch.from_numpy(nparray)
     data = data.permute((2, 0, 1))
     return data
+
+
+def crop_to_list(data: torch.Tensor, config) -> List[torch.Tensor]:
+    patches = []
+    crop_size = 48
+    x, y = data.shape[1], data.shape[2]
+    for _x in range(crop_size, x, crop_size):
+        for _y in range(crop_size, y, crop_size):
+            patches.append(data[:, _x:_x+32, _y:_y+32])
+    return patches

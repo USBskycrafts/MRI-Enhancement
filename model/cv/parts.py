@@ -1,5 +1,6 @@
 from collections import OrderedDict
 import logging
+from sympy import Ge
 import torch
 import torch.nn as nn
 import torch.nn.parameter as p
@@ -9,10 +10,9 @@ from model.unet.unet_parts import *
 
 
 class Encoder(nn.Module):
-    def __init__(self, config, gpu_list, *args, **params):
+    def __init__(self, input_channels):
         super(Encoder, self).__init__()
-        self.input_dim = config.getint("model", "input_dim")
-        self.gpu_list = gpu_list
+        self.input_dim = input_channels
 
         self.inc = DoubleConv(self.input_dim, self.input_dim * 16)
         self.down1 = Down(self.input_dim * 16, self.input_dim * 32)
@@ -21,9 +21,9 @@ class Encoder(nn.Module):
         self.down4 = Down(self.input_dim * 128, self.input_dim * 256)
         self.logger = logging.getLogger("Encoder")
 
-    def forward(self, data, config, gpu_list, acc_result, mode):
+    def forward(self, x):
         # data must be a clip of "origin" field
-        x1 = self.inc(data)
+        x1 = self.inc(x)
         x2 = self.down1(x1)
         x3 = self.down2(x2)
         x4 = self.down3(x3)
@@ -39,21 +39,209 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, config, gpu_list, *args, **params):
+    def __init__(self, output_channels):
         super(Decoder, self).__init__()
-        self.output_dim = params["output_dim"]
+        self.output_dim = output_channels
         self.up1 = Up(self.output_dim * 256, self.output_dim * 128)
         self.up2 = Up(self.output_dim * 128, self.output_dim * 64)
         self.up3 = Up(self.output_dim * 64, self.output_dim * 32)
         self.up4 = Up(self.output_dim * 32, self.output_dim * 16)
         self.outc = OutConv(self.output_dim * 16, self.output_dim)
 
-    def forward(self, data: dict, config, gpu_list, acc_result, mode):
+    def forward(self, x):
         # data must be the output of encoder
-        x1, x2, x3, x4, x5 = data.values()
+        x1, x2, x3, x4, x5 = x.values()
         x = self.up1(x5, x4)
         x = self.up2(x, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         logits = self.outc(x)
         return logits
+
+
+class Decomposer(nn.Module):
+    def __init__(self, input_channels, output_channels, feature_channels):
+        super(Decomposer, self).__init__()
+        self.input_channels = input_channels
+        self.output_channels = output_channels
+        self.feature_channels = feature_channels
+
+        self.encoder = Encoder(input_channels)
+        self.map_decoder = Decoder(output_channels)
+        self.proton_decoder = Decoder(output_channels)
+
+        self.reconstruct_loss = nn.ModuleList(
+            # for each decoder
+            nn.L1Loss() for _ in range(2)
+        )
+    from typing import Dict
+
+    def forward(self, data: Dict[str, torch.Tensor]):
+        """decompose the T1 or T2 weighted image
+
+        Args:
+            data (Dict[str, Tensor]): should contain the following fields:
+                "image": the input image
+                "target": the target image
+                "type": "T1" or "T2"
+
+        Returns:
+            dict: a dictionary containing the following fields:
+                "loss": the loss of the model
+        """
+        x = data["image"]
+        target = data["target"]
+        category = data["type"]
+        features = self.encoder(x)
+        mapping = self.map_decoder(features)
+        proton = self.proton_decoder(features)
+        if category == "T1":
+            reconstructed = proton * (1 - torch.exp(-mapping))
+        elif category == "T2":
+            reconstructed = proton * torch.exp(-mapping)
+        else:
+            raise ValueError(f"Unknown category: {category}")
+        # print(reconstructed.shape, target.shape, self.reconstruct_loss)
+        loss = sum(map(lambda f: f(target, reconstructed),
+                       self.reconstruct_loss))
+        return {"loss": loss,
+                "map": mapping,
+                "proton": proton}
+
+
+class Enhancer(nn.Module):
+    def __init__(self, input_channels, output_channels):
+        super(Enhancer, self).__init__()
+        self.input_channels = input_channels
+        self.output_channels = output_channels
+
+        self.enhancer = nn.Sequential(
+            Encoder(input_channels),
+            Decoder(output_channels),
+        )
+
+        self.loss = nn.L1Loss()
+
+    def forward(self, data):
+        """an enhancement net to enhance the T1 map
+
+        Args:
+            data (_type_): _description_
+        """
+        map = data["map"]
+        proton = data["proton"]
+        target = data["target"]
+
+        enhanced_map = self.enhancer(map)
+        reconstructed = proton * (1 - torch.exp(-enhanced_map))
+        return {"loss": self.loss(target, reconstructed) * 0.1,
+                "generated": reconstructed}
+
+
+class Classifier(nn.Module):
+    def __init__(self, input_channels, n_classes):
+        super(Classifier, self).__init__()
+        self.input_channels = input_channels
+        self.output_channels = input_channels
+        self.n_classes = n_classes
+
+        self.classifier = nn.Sequential(
+            Encoder(input_channels),
+            Decoder(input_channels),
+            nn.AdaptiveAvgPool2d((1, 1)),
+            nn.Flatten(),
+            nn.Linear(input_channels, n_classes),
+            nn.Softmax(dim=1)
+        )
+
+        self.cross_entropy = nn.CrossEntropyLoss()
+
+    def forward(self, data):
+        """classify the image into one of the classes
+
+        Args:
+            data (Dict[str, Tensor]): should contain the following fields:
+                "fake": the fake image  
+                "real": the real image
+
+
+
+        Returns:
+            dict: the loss of the classifier
+        """
+        fake = data["fake"]
+        real = data["real"]
+
+        fake_label = self.classifier(fake)
+        real_label = self.classifier(real)
+
+        loss = self.cross_entropy(fake_label,
+                                  torch.zeros(fake_label.shape[0], dtype=torch.long, device=fake_label.device)) \
+            + self.cross_entropy(real_label,
+                                 torch.ones(real_label.shape[0], dtype=torch.long, device=real_label.device))
+
+        return {"loss": loss,
+                "fake_label": fake_label,
+                "real_label": real_label}
+
+
+class Discriminator(nn.Module):
+    def __init__(self, input_channels):
+        super(Discriminator, self).__init__()
+        self.input_channels = input_channels
+        self.classifier = Classifier(input_channels, 2)
+
+    def forward(self, data):
+        fake = data["fake"].detach()
+        real = data["real"].detach()
+        return self.classifier({"fake": fake, "real": real})
+
+
+class Generator(nn.Module):
+    def __init__(self, input_channels, output_channels, discriminator):
+        super(Generator, self).__init__()
+        self.decomposer = Decomposer(
+            input_channels, output_channels, input_channels * 32)
+        self.enhancer = Enhancer(input_channels, output_channels)
+        self.NH_loss = nn.L1Loss()
+        self.cross_entropy = nn.CrossEntropyLoss()
+        self.discriminator = discriminator
+
+    def forward(self, data):
+        t1_weighted = data["T1"]
+        t2_weighted = data["T2"]
+        t1_enhanced = data["T1CE"]
+        loss = 0
+        _loss, N1, T1 = self.decomposer({
+            "image": t1_weighted,
+            "target": t1_enhanced,
+            "type": "T1"
+        }).values()
+        loss += _loss
+
+        _loss, N2, T2 = self.decomposer({
+            "image": t2_weighted,
+            "target": t1_enhanced,
+            "type": "T2"
+        }).values()
+        loss += _loss
+        loss += self.NH_loss(N1, N2)
+
+        _loss, enhanced = self.enhancer({
+            "map": T1,
+            "proton": N1,
+            "target": t1_enhanced
+        }).values()
+        loss += _loss
+
+        _loss, fake_label, real_label = self.discriminator({
+            "fake": enhanced,
+            "real": t1_enhanced
+        }).values()
+        loss += self.cross_entropy(fake_label, torch.ones(
+            enhanced.shape[0], dtype=torch.long, device=enhanced.device))
+
+        return {
+            "loss": loss,
+            "enhanced": enhanced
+        }
