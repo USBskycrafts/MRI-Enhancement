@@ -137,6 +137,8 @@ class Decomposer(nn.Module):
         # print(reconstructed.shape, target.shape, self.reconstruct_loss)
         loss = sum(map(lambda f: f(target, reconstructed),
                        self.reconstruct_loss))
+        loss += torch.sum(torch.linalg.matrix_norm(mapping, ord=1)) * \
+            0.01 + torch.sum(torch.linalg.matrix_norm(proton, ord=1)) * 0.01
         return {"loss": loss,
                 "map": mapping,
                 "proton": proton}
@@ -167,7 +169,7 @@ class Enhancer(nn.Module):
 
         enhanced_map = self.enhancer(map)
         reconstructed = proton * (1 - torch.exp(-enhanced_map))
-        return {"loss": self.loss(target, reconstructed) * 0.1,
+        return {"loss": self.loss(target, reconstructed) * 0.1 + torch.sum(torch.linalg.matrix_norm(enhanced_map, ord=1)) * 0.01,
                 "generated": reconstructed}
 
 
