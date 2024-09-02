@@ -92,6 +92,19 @@ class Decoder(nn.Module):
         return torch.sigmoid(logits)
 
 
+class ElementLoss(nn.Module):
+    def __init__(self):
+        super(ElementLoss, self).__init__()
+        # 6 main elements in the head
+        self.elements = nn.parameter.Parameter(torch.randn(6))
+
+    def forward(self, x):
+        loss = 1
+        for e in self.elements:
+            loss *= (x - e)
+        return torch.linalg.norm(loss)
+
+
 class Decomposer(nn.Module):
     def __init__(self, input_channels, output_channels, feature_channels):
         super(Decomposer, self).__init__()
@@ -106,6 +119,9 @@ class Decomposer(nn.Module):
         self.reconstruct_loss = nn.ModuleList(
             # for each decoder
             nn.L1Loss() for _ in range(2)
+        )
+        self.element_losses = nn.ModuleList(
+            ElementLoss() for _ in range(2)
         )
     from typing import Dict
 
@@ -137,8 +153,8 @@ class Decomposer(nn.Module):
         # print(reconstructed.shape, target.shape, self.reconstruct_loss)
         loss = sum(map(lambda f: f(target, reconstructed),
                        self.reconstruct_loss))
-        loss += torch.sum(torch.linalg.matrix_norm(mapping, ord=1)) * \
-            0.01 + torch.sum(torch.linalg.matrix_norm(proton, ord=1)) * 0.01
+        loss += self.element_losses[0](mapping) * \
+            0.01 + self.element_losses[1](proton) * 0.01
         return {"loss": loss,
                 "map": mapping,
                 "proton": proton}
@@ -156,6 +172,7 @@ class Enhancer(nn.Module):
         )
 
         self.loss = nn.L1Loss()
+        self.element_loss = ElementLoss()
 
     def forward(self, data):
         """an enhancement net to enhance the T1 map
@@ -169,7 +186,7 @@ class Enhancer(nn.Module):
 
         enhanced_map = self.enhancer(map)
         reconstructed = proton * (1 - torch.exp(-enhanced_map))
-        return {"loss": self.loss(target, reconstructed) * 0.1 + torch.sum(torch.linalg.matrix_norm(enhanced_map, ord=1)) * 0.01,
+        return {"loss": self.loss(target, reconstructed) * 0.1 + self.element_loss(enhanced_map) * 0.01,
                 "generated": reconstructed}
 
 
