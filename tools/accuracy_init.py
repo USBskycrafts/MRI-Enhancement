@@ -1,13 +1,14 @@
 import json
 from .accuracy_tool import single_label_top1_accuracy, single_label_top2_accuracy, multi_label_accuracy, \
-    null_accuracy_function, calculate_psnr, calculate_ssim
+    null_accuracy_function, calculate_psnr, calculate_ssim, calculate_mean_loss
 
 accuracy_function_dic = {
     "SingleLabelTop1": single_label_top1_accuracy,
     "MultiLabel": multi_label_accuracy,
     "Null": null_accuracy_function,
     "PSNR": calculate_psnr,
-    "SSIM": calculate_ssim
+    "SSIM": calculate_ssim,
+    "mean_loss": calculate_mean_loss,
 }
 
 

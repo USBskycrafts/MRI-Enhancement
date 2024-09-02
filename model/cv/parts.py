@@ -1,12 +1,37 @@
-from collections import OrderedDict
 import logging
-from sympy import Ge
 import torch
 import torch.nn as nn
-import torch.nn.parameter as p
-import torch.nn.functional as F
-from typing import OrderedDict
 from model.unet.unet_parts import *
+from torch.nn.modules.transformer import TransformerEncoderLayer, TransformerDecoderLayer
+
+
+class EncoderAttentionLayer(nn.Module):
+    def __init__(self, input_channels):
+        super(EncoderAttentionLayer, self).__init__()
+        self.input_dim = input_channels
+        assert self.input_dim % 8 == 0, "input dimension must be divisible by 8"
+        self.tokenizer = nn.Sequential(
+            nn.AdaptiveMaxPool2d((16, 16)),
+            nn.Flatten(start_dim=2, end_dim=-1),
+            nn.Linear(16 * 16, 32),
+        )
+        self.attention_layer = TransformerEncoderLayer(
+            d_model=32, nhead=8)
+        self.pooling = nn.AdaptiveAvgPool1d(1)
+
+    def forward(self, x):
+        token = self.tokenizer(x)
+        token = self.attention_layer(token)
+        return self.pooling(token).unsqueeze(-1)
+
+
+class DecoderAttentionLayer(nn.Module):
+    def __init__(self, input_channels):
+        super(DecoderAttentionLayer, self).__init__()
+        self.input_dim = input_channels
+
+    def forward(self, x):
+        pass
 
 
 class Encoder(nn.Module):
@@ -16,25 +41,33 @@ class Encoder(nn.Module):
 
         self.inc = DoubleConv(self.input_dim, self.input_dim * 16)
         self.down1 = Down(self.input_dim * 16, self.input_dim * 32)
+        self.attention1 = EncoderAttentionLayer(self.input_dim * 32)
         self.down2 = Down(self.input_dim * 32, self.input_dim * 64)
+        self.attention2 = EncoderAttentionLayer(self.input_dim * 64)
         self.down3 = Down(self.input_dim * 64, self.input_dim * 128)
-        self.down4 = Down(self.input_dim * 128, self.input_dim * 256)
+        self.attention3 = EncoderAttentionLayer(self.input_dim * 128)
+        # self.down4 = Down(self.input_dim * 128, self.input_dim * 256)
+        # self.attention4 = EncoderAttentionLayer(self.input_dim * 256)
         self.logger = logging.getLogger("Encoder")
 
     def forward(self, x):
         # data must be a clip of "origin" field
         x1 = self.inc(x)
         x2 = self.down1(x1)
+        x2 = x2 * self.attention1(x2)
         x3 = self.down2(x2)
+        x3 = x3 * self.attention2(x3)
         x4 = self.down3(x3)
-        x5 = self.down4(x4)  # shape of x5 is [batch_size, 1024, *, *]
+        x4 = x4 * self.attention3(x4)
+        # x5 = self.down4(x4)  # shape of x5 is [batch_size, 1024, *, *]
+        # x5 = x5 * self.attention4(x5)
 
         return {
             "x1": x1,
             "x2": x2,
             "x3": x3,
             "x4": x4,
-            "x5": x5,
+            # "x5": x5,
         }
 
 
@@ -42,7 +75,7 @@ class Decoder(nn.Module):
     def __init__(self, output_channels):
         super(Decoder, self).__init__()
         self.output_dim = output_channels
-        self.up1 = Up(self.output_dim * 256, self.output_dim * 128)
+        # self.up1 = Up(self.output_dim * 256, self.output_dim * 128)
         self.up2 = Up(self.output_dim * 128, self.output_dim * 64)
         self.up3 = Up(self.output_dim * 64, self.output_dim * 32)
         self.up4 = Up(self.output_dim * 32, self.output_dim * 16)
@@ -50,9 +83,9 @@ class Decoder(nn.Module):
 
     def forward(self, x):
         # data must be the output of encoder
-        x1, x2, x3, x4, x5 = x.values()
-        x = self.up1(x5, x4)
-        x = self.up2(x, x3)
+        x1, x2, x3, x4 = x.values()
+        # x = self.up1(x5, x4)
+        x = self.up2(x4, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         logits = self.outc(x)
@@ -134,6 +167,7 @@ class Enhancer(nn.Module):
 
         enhanced_map = self.enhancer(map)
         reconstructed = proton * (1 - torch.exp(-enhanced_map))
+        reconstructed = torch.sigmoid(reconstructed)
         return {"loss": self.loss(target, reconstructed) * 0.1,
                 "generated": reconstructed}
 

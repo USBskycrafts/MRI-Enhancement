@@ -2,7 +2,7 @@ from re import I
 import torch
 import torch.nn as nn
 import itertools
-from tools.accumulate_tool import accumulate_cv_data
+from tools.accumulate_tool import accumulate_cv_data, accumulate_loss
 from .parts import *
 
 
@@ -34,11 +34,19 @@ class ProposedModel(nn.Module):
         }).values()
         loss += _loss
 
-        return {
-            "loss": loss,
-            "acc_result": accumulate_cv_data({
+        if mode == "train":
+            acc_result = accumulate_loss({
+                "gen_loss": loss - _loss,
+                "dis_loss": _loss
+            }, acc_result, config, mode)
+        else:
+            acc_result = accumulate_cv_data({
                 "output": fake.detach(),
                 "gt": t1ce.detach(),
-            }, acc_result, config, mode),
+            }, acc_result, config, mode)
+
+        return {
+            "loss": loss,
+            "acc_result": acc_result,
             "output": list(torch.split(fake.squeeze().cpu().detach(), 1, dim=0))
         }

@@ -24,10 +24,11 @@ def cv_output_function(data, config, *args, **params):
     """the general cv output function
 
     """
-    psnr, ssim = data.values()
+    x, y = data.values()
+    k1, k2 = data.keys()
     return json.dumps({
-        "avg psnr": f"{sum(psnr) / len(psnr):<2.2f}",
-        "min psnr": f"{min(psnr):<2.2f}",
-        "avg ssim": f"{sum(ssim) / len(ssim) * 100:<2.2f}%",
-        "min ssim": f"{min(ssim) * 100:<2.2f}%",
+        "avg " + k1: f"{sum(x) / len(x):<2.2f}",
+        "min " + k1: f"{min(x):<2.2f}",
+        "avg " + k2: f"{sum(y) / len(y) * 100:<2.2f}%",
+        "min " + k2: f"{min(y) * 100:<2.2f}%",
     }, sort_keys=True)

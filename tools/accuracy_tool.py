@@ -177,3 +177,7 @@ def calculate_ssim(outputs, gt, config, result=None):
     ssim = SSIM(data_range=norm_max)
     ssim.update([outputs, gt])
     return ssim.compute()
+
+
+def calculate_mean_loss(loss, result=None):
+    return loss.mean()
