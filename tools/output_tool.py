@@ -29,6 +29,6 @@ def cv_output_function(data, config, *args, **params):
     return json.dumps({
         "avg " + k1: f"{sum(x) / len(x):<2.2f}",
         "min " + k1: f"{min(x):<2.2f}",
-        "avg " + k2: f"{sum(y) / len(y) * 100:<2.2f}%",
-        "min " + k2: f"{min(y) * 100:<2.2f}%",
+        "avg " + k2: f"{sum(y) / len(y):<2.2f}",
+        "min " + k2: f"{min(y):<2.2f}",
     }, sort_keys=True)

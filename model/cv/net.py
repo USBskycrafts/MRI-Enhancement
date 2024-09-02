@@ -13,6 +13,7 @@ class ProposedModel(nn.Module):
         self.input_dim = config.getint("model", "input_dim")
         # output should be the dimension of the original data
         self.output_dim = config.getint("model", "output_dim")
+        # writer = params["writer"]
 
         self.discriminator = Discriminator(self.output_dim)
         self.generator = Generator(
@@ -33,17 +34,10 @@ class ProposedModel(nn.Module):
             "real": t1ce
         }).values()
         loss += _loss
-
-        if mode == "train":
-            acc_result = accumulate_loss({
-                "gen_loss": loss - _loss,
-                "dis_loss": _loss
-            }, acc_result, config, mode)
-        else:
-            acc_result = accumulate_cv_data({
-                "output": fake.detach(),
-                "gt": t1ce.detach(),
-            }, acc_result, config, mode)
+        acc_result = accumulate_cv_data({
+            "output": fake.detach(),
+            "gt": t1ce.detach(),
+        }, acc_result, config, mode)
 
         return {
             "loss": loss,

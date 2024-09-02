@@ -11,7 +11,7 @@ class EncoderAttentionLayer(nn.Module):
         self.input_dim = input_channels
         assert self.input_dim % 8 == 0, "input dimension must be divisible by 8"
         self.tokenizer = nn.Sequential(
-            nn.AdaptiveMaxPool2d((16, 16)),
+            nn.AdaptiveAvgPool2d((16, 16)),
             nn.Flatten(start_dim=2, end_dim=-1),
             nn.Linear(16 * 16, 32),
         )
@@ -89,7 +89,7 @@ class Decoder(nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         logits = self.outc(x)
-        return logits
+        return torch.sigmoid(logits)
 
 
 class Decomposer(nn.Module):
@@ -167,7 +167,6 @@ class Enhancer(nn.Module):
 
         enhanced_map = self.enhancer(map)
         reconstructed = proton * (1 - torch.exp(-enhanced_map))
-        reconstructed = torch.sigmoid(reconstructed)
         return {"loss": self.loss(target, reconstructed) * 0.1,
                 "generated": reconstructed}
 
