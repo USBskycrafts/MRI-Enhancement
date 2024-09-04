@@ -240,7 +240,7 @@ class Classifier(nn.Module):
                                  torch.ones(real_label.shape[0],
                                             dtype=torch.long,
                                             device=real_label.device))
-        loss *= 10
+        loss *= 10 / 2
 
         return {"loss": loss,
                 "fake_label": fake_label,
