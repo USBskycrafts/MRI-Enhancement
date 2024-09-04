@@ -36,6 +36,11 @@ class ProposedModel(nn.Module):
         }).values()
         loss += d_loss
 
+        acc_result = accumulate_cv_data({
+            "output": fake.detach(),
+            "gt": t1ce.detach(),
+        }, acc_result, config, mode)
+
         if mode == "train" and local != None:
             writer: SummaryWriter = local.writer
             global_step = local.global_step
@@ -43,11 +48,10 @@ class ProposedModel(nn.Module):
                               float(d_loss), global_step=global_step)
             writer.add_scalar("loss/generator", float(g_loss),
                               global_step=global_step)
-
-        acc_result = accumulate_cv_data({
-            "output": fake.detach(),
-            "gt": t1ce.detach(),
-        }, acc_result, config, mode)
+            writer.add_scalar("psnr", acc_result[-1]["PSNR"],
+                              global_step=global_step)
+            writer.add_scalar("ssim", acc_result[-1]["SSIM"],
+                              global_step=global_step)
 
         return {
             "loss": loss,

@@ -57,4 +57,4 @@ def test(parameters: Dict, config, gpu_list):
         gen_time_str(delta_t), gen_time_str(delta_t * (total_len - step - 1) / (step + 1))),
         "%.3lf" % (total_loss / (step + 1)), output_info, None, config)
 
-    return None
+    return result
