@@ -120,9 +120,9 @@ class Decomposer(nn.Module):
             # for each decoder
             nn.L1Loss() for _ in range(2)
         )
-        # self.formalized_loss = nn.ModuleList(
-        #     ElementLoss() for _ in range(2)
-        # )
+        self.formalized_loss = nn.ModuleList(
+            ElementLoss() for _ in range(2)
+        )
     from typing import Dict
 
     def forward(self, data: Dict[str, torch.Tensor]):
@@ -153,7 +153,10 @@ class Decomposer(nn.Module):
         # print(reconstructed.shape, target.shape, self.reconstruct_loss)
         loss = sum(map(lambda f: f(target, reconstructed),
                        self.reconstruct_loss))
-        # loss += 0.001 * sum(map(self.formalized_loss, (mapping, proton)))
+        loss += 0.001 * (
+            self.reconstruct_loss[0](proton) +
+            self.reconstruct_loss[1](mapping)
+        )
         return {"loss": loss,
                 "map": mapping,
                 "proton": proton}
@@ -172,7 +175,7 @@ class Enhancer(nn.Module):
 
         self.loss = nn.L1Loss()
 
-        # self.formalized_loss = ElementLoss()
+        self.formalized_loss = ElementLoss()
 
     def forward(self, data):
         """an enhancement net to enhance the T1 map
@@ -187,7 +190,7 @@ class Enhancer(nn.Module):
         enhanced_map = self.enhancer(map)
         reconstructed = proton * (1 - torch.exp(-enhanced_map))
         loss = self.loss(target, reconstructed)
-        # loss += sum(map(self.formalized_loss, (enhanced_map, proton))) * 0.001
+        loss += self.formalized_loss(enhanced_map, proton) * 0.001
         return {"loss": loss,
                 "generated": reconstructed}
 
@@ -273,14 +276,14 @@ class Generator(nn.Module):
         loss = 0
         _loss, N1, T1 = self.decomposer({
             "image": t1_weighted,
-            "target": t1_enhanced,
+            "target": t1_weighted,
             "type": "T1"
         }).values()
         loss += _loss
 
         _loss, N2, T2 = self.decomposer({
             "image": t2_weighted,
-            "target": t1_enhanced,
+            "target": t2_weighted,
             "type": "T2"
         }).values()
         loss += _loss
