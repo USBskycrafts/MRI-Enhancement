@@ -48,9 +48,9 @@ class ProposedModel(nn.Module):
                               float(d_loss), global_step=global_step)
             writer.add_scalar("loss/generator", float(g_loss),
                               global_step=global_step)
-            writer.add_scalar("psnr", acc_result[-1]["PSNR"],
+            writer.add_scalar("psnr", acc_result["PSNR"][-1],
                               global_step=global_step)
-            writer.add_scalar("ssim", acc_result[-1]["SSIM"],
+            writer.add_scalar("ssim", acc_result["SSIM"][-1],
                               global_step=global_step)
 
         return {

@@ -108,7 +108,7 @@ def train(parameters, config, gpu_list, do_test=False):
                         data[key] = Variable(data[key])
 
             optimizer.zero_grad()
-
+            local.global_step = global_step
             results = model(data, config, gpu_list, acc_result, "train", local)
 
             loss, acc_result = results["loss"], results["acc_result"]
@@ -127,7 +127,6 @@ def train(parameters, config, gpu_list, do_test=False):
                     "%.3lf" % (total_loss / (step + 1)), output_info, '\r', config)
 
             global_step += 1
-            local.global_step = global_step
             writer.add_scalar(config.get("output", "model_name") +
                               "_train_iter", float(loss), global_step)
 
