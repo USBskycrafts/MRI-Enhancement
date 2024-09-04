@@ -96,7 +96,7 @@ class ElementLoss(nn.Module):
     def __init__(self):
         super(ElementLoss, self).__init__()
         # 6 main elements in the head
-        self.elements = nn.parameter.Parameter(torch.randn(6))
+        self.elements = nn.parameter.Parameter(torch.randn(10))
 
     def forward(self, x):
         loss = 1
@@ -120,9 +120,9 @@ class Decomposer(nn.Module):
             # for each decoder
             nn.L1Loss() for _ in range(2)
         )
-        self.element_losses = nn.ModuleList(
-            ElementLoss() for _ in range(2)
-        )
+        # self.formalized_loss = nn.ModuleList(
+        #     ElementLoss() for _ in range(2)
+        # )
     from typing import Dict
 
     def forward(self, data: Dict[str, torch.Tensor]):
@@ -153,8 +153,7 @@ class Decomposer(nn.Module):
         # print(reconstructed.shape, target.shape, self.reconstruct_loss)
         loss = sum(map(lambda f: f(target, reconstructed),
                        self.reconstruct_loss))
-        loss += self.element_losses[0](mapping) * \
-            0.01 + self.element_losses[1](proton) * 0.01
+        # loss += 0.001 * sum(map(self.formalized_loss, (mapping, proton)))
         return {"loss": loss,
                 "map": mapping,
                 "proton": proton}
@@ -172,7 +171,8 @@ class Enhancer(nn.Module):
         )
 
         self.loss = nn.L1Loss()
-        self.element_loss = ElementLoss()
+
+        # self.formalized_loss = ElementLoss()
 
     def forward(self, data):
         """an enhancement net to enhance the T1 map
@@ -186,7 +186,9 @@ class Enhancer(nn.Module):
 
         enhanced_map = self.enhancer(map)
         reconstructed = proton * (1 - torch.exp(-enhanced_map))
-        return {"loss": self.loss(target, reconstructed) * 0.1 + self.element_loss(enhanced_map) * 0.01,
+        loss = self.loss(target, reconstructed)
+        # loss += sum(map(self.formalized_loss, (enhanced_map, proton))) * 0.001
+        return {"loss": loss,
                 "generated": reconstructed}
 
 
@@ -213,7 +215,7 @@ class Classifier(nn.Module):
 
         Args:
             data (Dict[str, Tensor]): should contain the following fields:
-                "fake": the fake image  
+                "fake": the fake image
                 "real": the real image
 
 
@@ -228,9 +230,14 @@ class Classifier(nn.Module):
         real_label = self.classifier(real)
 
         loss = self.cross_entropy(fake_label,
-                                  torch.zeros(fake_label.shape[0], dtype=torch.long, device=fake_label.device)) \
+                                  torch.zeros(fake_label.shape[0],
+                                              dtype=torch.long,
+                                              device=fake_label.device)) \
             + self.cross_entropy(real_label,
-                                 torch.ones(real_label.shape[0], dtype=torch.long, device=real_label.device))
+                                 torch.ones(real_label.shape[0],
+                                            dtype=torch.long,
+                                            device=real_label.device))
+        loss *= 10
 
         return {"loss": loss,
                 "fake_label": fake_label,

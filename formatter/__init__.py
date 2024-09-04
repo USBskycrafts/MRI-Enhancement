@@ -2,12 +2,14 @@ import logging
 
 from .Basic import BasicFormatter
 from .cv.NibabelFormmater import NibabelFormmater
+from .nifti.NIFTI1Formmater import NIFTI1Formatter
 
 logger = logging.getLogger(__name__)
 
 formatter_list = {
     "Basic": BasicFormatter,
     "Nibabel": NibabelFormmater,
+    "NIFTI": NIFTI1Formatter,
 }
 
 
