@@ -13,7 +13,6 @@ from tools.eval_tool import valid, gen_time_str, output_value
 from tools.init_tool import init_test_dataset, init_formatter
 
 logger = logging.getLogger(__name__)
-local = threading.local()
 
 
 def checkpoint(filename, model, optimizer, trained_epoch, config, global_step):
@@ -34,6 +33,7 @@ def checkpoint(filename, model, optimizer, trained_epoch, config, global_step):
 
 
 def train(parameters, config, gpu_list, do_test=False):
+    local = threading.local()
     epoch = config.getint("train", "epoch")
     batch_size = config.getint("train", "batch_size")
 
@@ -109,7 +109,7 @@ def train(parameters, config, gpu_list, do_test=False):
 
             optimizer.zero_grad()
 
-            results = model(data, config, gpu_list, acc_result, "train")
+            results = model(data, config, gpu_list, acc_result, "train", local)
 
             loss, acc_result = results["loss"], results["acc_result"]
             total_loss += float(loss)

@@ -4,7 +4,6 @@ import torch.nn as nn
 import itertools
 from tools.accumulate_tool import accumulate_cv_data, accumulate_loss
 from .parts import *
-from tools.train_tool import local
 from tensorboardX import SummaryWriter
 
 
@@ -21,7 +20,7 @@ class ProposedModel(nn.Module):
         self.generator = Generator(
             self.input_dim, self.output_dim, self.discriminator)
 
-    def forward(self, data, config, gpu_list, acc_result, mode):
+    def forward(self, data, config, gpu_list, acc_result, mode, local=None):
         t1, t2, t1ce = data["t1"], data["t2"], data["t1ce"]
         loss = 0
         g_loss, fake = self.generator({
@@ -37,7 +36,7 @@ class ProposedModel(nn.Module):
         }).values()
         loss += d_loss
 
-        if mode == "train":
+        if mode == "train" and local != None:
             writer: SummaryWriter = local.writer
             global_step = local.global_step
             writer.add_scalar("loss/discriminator",
