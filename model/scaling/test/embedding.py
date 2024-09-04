@@ -1,4 +1,4 @@
-from model.scaling.parts import CrossScaleEmbedding
+from model.scaling.cross_embedding import CrossScaleEmbedding
 import unittest
 import torch
 import torch.nn as nn

@@ -24,25 +24,25 @@ def render_results(origin, gt, result: List[torch.Tensor], batch, config, *args,
     o = torch.permute(o, (1, 2, 0))
     t = torch.permute(t, (1, 2, 0))
     r = torch.permute(r, (1, 2, 0))
-    # with lock:
-    ax = plt.subplot(1, 3, 1)
-    ax.set_title("T1")
-    plt.imshow(o.cpu().numpy(), cmap="gray")
-    bx = plt.subplot(1, 3, 2)
-    bx.set_title("T1CE")
-    plt.imshow(t.cpu().numpy(), cmap="gray")
-    cx = plt.subplot(1, 3, 3)
-    cx.set_title("Result")
-    plt.imshow(r.cpu().numpy(), cmap="gray")
-    plt.savefig(f"{render_path}/{batch}.png",
-                dpi=600, bbox_inches='tight')
+    with lock:
+        ax = plt.subplot(1, 3, 1)
+        ax.set_title("T1")
+        plt.imshow(o.cpu().numpy(), cmap="gray")
+        bx = plt.subplot(1, 3, 2)
+        bx.set_title("T1CE")
+        plt.imshow(t.cpu().numpy(), cmap="gray")
+        cx = plt.subplot(1, 3, 3)
+        cx.set_title("Result")
+        plt.imshow(r.cpu().numpy(), cmap="gray")
+        plt.savefig(f"{render_path}/{batch}.png",
+                    dpi=600, bbox_inches='tight')
     return
 
 
 class ResultRenderer:
     def __init__(self, config):
         self.config = config
-        self.executor = ThreadPoolExecutor(max_workers=1)
+        self.executor = ThreadPoolExecutor(max_workers=32)
         self.logger = logging.getLogger(__name__)
         self.lock = threading.Lock()
         self.render_path = os.path.join(config.get("test", "render_path"),
@@ -55,12 +55,13 @@ class ResultRenderer:
         concurrent.futures.wait(self.futures)
 
     def render_results(self, data: Dict[str, torch.Tensor], result: List[torch.Tensor], batch,  *args, **params):
-        t1 = torch.detach(data["t1"].cpu()).squeeze()
-        t1ce = torch.detach(data["t1ce"].cpu()).squeeze()
-        t1 = t1.split(1, dim=0)
-        t1ce = t1ce.split(1, dim=0)
-        render_results(t1, t1ce, result, batch,
-                       self.config, *args, lock=self.lock, render_path=self.render_path, **params)
-        # future = self.executor.submit(task, data, result)
-        # self.futures.append(future)
-        # task(data, result)
+        def task(data, result):
+            t1 = torch.detach(data["t1"].cpu()).squeeze()
+            t1ce = torch.detach(data["t1ce"].cpu()).squeeze()
+            t1 = t1.split(1, dim=0)
+            t1ce = t1ce.split(1, dim=0)
+            render_results(t1, t1ce, result, batch,
+                           self.config, *args, lock=self.lock, render_path=self.render_path, **params)
+        future = self.executor.submit(task, data, result)
+        self.futures.append(future)
+        task(data, result)
