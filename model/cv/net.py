@@ -5,6 +5,7 @@ import itertools
 from tools.accumulate_tool import accumulate_cv_data, accumulate_loss
 from .parts import *
 from tools.train_tool import local
+from tensorboardX import SummaryWriter
 
 
 class ProposedModel(nn.Module):
@@ -23,23 +24,27 @@ class ProposedModel(nn.Module):
     def forward(self, data, config, gpu_list, acc_result, mode):
         t1, t2, t1ce = data["t1"], data["t2"], data["t1ce"]
         loss = 0
-        writer = local.writer
-        global_step = local.global_step
-        _loss, fake = self.generator({
+        g_loss, fake = self.generator({
             "T1": t1,
             "T2": t2,
             "T1CE": t1ce
         }).values()
-        loss += _loss
-        writer.add_scalar("loss/generator", float(_loss),
-                          global_step=global_step)
-        _loss, fake_label, real_label = self.discriminator({
+        loss += g_loss
+
+        d_loss, fake_label, real_label = self.discriminator({
             "fake": fake,
             "real": t1ce
         }).values()
-        loss += _loss
-        writer.add_scalar("loss/discriminator",
-                          float(_loss), global_step=global_step)
+        loss += d_loss
+
+        if mode == "train":
+            writer: SummaryWriter = local.writer
+            global_step = local.global_step
+            writer.add_scalar("loss/discriminator",
+                              float(d_loss), global_step=global_step)
+            writer.add_scalar("loss/generator", float(g_loss),
+                              global_step=global_step)
+
         acc_result = accumulate_cv_data({
             "output": fake.detach(),
             "gt": t1ce.detach(),

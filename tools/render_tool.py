@@ -21,12 +21,6 @@ def render_results(origin, gt, result: List[torch.Tensor], batch, config, *args,
     lock = params["lock"]
     render_path = params["render_path"]
     o, t, r = list(zip(origin, gt, result))[len(result) // 2]
-    if o.shape[1] != 1:
-        o = o[:, o.shape[1] // 2, :, :]
-    if t.shape[1] != 1:
-        t = t[:, t.shape[1] // 2, :, :]
-    if r.shape[1] != 1:
-        r = r[:, r.shape[1] // 2, :, :]
     o = torch.permute(o, (1, 2, 0))
     t = torch.permute(t, (1, 2, 0))
     r = torch.permute(r, (1, 2, 0))

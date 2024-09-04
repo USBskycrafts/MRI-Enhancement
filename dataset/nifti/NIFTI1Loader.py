@@ -4,6 +4,7 @@ from torch.utils.data import Dataset
 import os
 import logging
 import nibabel as nib
+from typing import List
 
 
 class NIFTI1Loader(Dataset):
@@ -35,14 +36,42 @@ class NIFTI1Loader(Dataset):
                     return tensor
                 T1, T2, T1CE = map(load_from_path, [
                     self.t1_dir, self.t2_dir, self.t1ce_dir], [T1, T2, T1CE])
-                self.data_list.append({
-                    "t1": T1,
-                    "t2": T2,
-                    "t1ce": T1CE
-                })
+                T1, T2, T1CE = map(lambda x: self.data_process(
+                    x, config, mode, *args, **kwargs), [T1, T2, T1CE])
+
+                self.data_list.extend({
+                    "t1": t1,
+                    "t2": t2,
+                    "t1ce": t1ce,
+                } for (t1, t2, t1ce) in zip(T1, T2, T1CE))
 
     def __getitem__(self, index):
         return self.data_list[index]
 
     def __len__(self):
         return len(self.data_list)
+
+    def data_process(self, data: torch.Tensor, config, mode, *args, **params) -> List[torch.Tensor]:
+        # TODO: 1. crop from 155 to 16 in channels(using the middle half channels)
+        #       2. resize the shape from 240x240 to 64x64 for training
+        data = self.size_process(data, config, mode, *args, **params)
+        data_list = self.channel_process(data, config, mode, *args, **params)
+        return data_list
+
+    def channel_process(self, data: torch.Tensor, config, mode, *args, **params) -> List[torch.Tensor]:
+        n_channels = data.shape[0]
+        start = n_channels // 2 - n_channels // 4
+        end = n_channels // 2 + n_channels // 4
+        data = data[start:end, :, :]
+
+        input_dim = config.getint("model", "input_dim")
+        data_list = list(data.split(input_dim, dim=0))
+        if data_list[-1].shape[0] < input_dim:
+            data_list.pop()
+        return data_list
+
+    def size_process(self, data: torch.Tensor, config, mode, *args, **params) -> torch.Tensor:
+        if mode == 'train':
+            return data[:, 30:220, 50:200]
+        else:
+            return data
