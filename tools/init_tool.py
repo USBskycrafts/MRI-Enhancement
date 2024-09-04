@@ -43,11 +43,11 @@ def init_all(config, gpu_list, checkpoint, mode, *args, **params):
 
         if mode == "train":
             trained_epoch = parameters["trained_epoch"]
-            if config.get("train", "optimizer") == parameters["optimizer_name"]:
-                optimizer.load_state_dict(parameters["optimizer"])
-            else:
-                logger.warning(
-                    "Optimizer changed, do not load parameters of optimizer.")
+            # if config.get("train", "optimizer") == parameters["optimizer_name"]:
+            #     optimizer.load_state_dict(parameters["optimizer"])
+            # else:
+            #     logger.warning(
+            #         "Optimizer changed, do not load parameters of optimizer.")
 
             if "global_step" in parameters:
                 global_step = parameters["global_step"]

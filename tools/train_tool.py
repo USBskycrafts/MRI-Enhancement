@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 import torch
 import time
 from torch.autograd import Variable
@@ -12,6 +13,7 @@ from tools.eval_tool import valid, gen_time_str, output_value
 from tools.init_tool import init_test_dataset, init_formatter
 
 logger = logging.getLogger(__name__)
+local = threading.local()
 
 
 def checkpoint(filename, model, optimizer, trained_epoch, config, global_step):
@@ -71,6 +73,7 @@ def train(parameters, config, gpu_list, do_test=False):
 
     writer = SummaryWriter(tensorboard_path,
                            config.get("output", "model_name"))
+    local.writer = writer
 
     step_size = config.getint("train", "step_size")
     gamma = config.getfloat("train", "lr_multiplier")
@@ -124,6 +127,7 @@ def train(parameters, config, gpu_list, do_test=False):
                     "%.3lf" % (total_loss / (step + 1)), output_info, '\r', config)
 
             global_step += 1
+            local.global_step = global_step
             writer.add_scalar(config.get("output", "model_name") +
                               "_train_iter", float(loss), global_step)
 

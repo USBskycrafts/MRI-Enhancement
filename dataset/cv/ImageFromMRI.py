@@ -1,5 +1,6 @@
 import os
 import nibabel as nib
+from nibabel.nifti1 import load
 import torch
 import logging
 from tools.augmentation_tool import crop_to_list
@@ -26,11 +27,15 @@ class ImageFromMRI(Dataset):
         for file in sorted(os.listdir(self.t1_dir)):
             if file.endswith(".nii"):
                 path = os.path.join(self.t1_dir, file)
-                data = nib.load(path).get_fdata()  # type: ignore
+                data = load(path).get_fdata()
                 tensor = torch.tensor(data)
                 tensor = (tensor - tensor.min()) / \
                     (tensor.max() - tensor.min())
                 tensor = torch.permute(tensor, (2, 0, 1)).float()
+
+                mid_layer = tensor.shape[0] // 2
+                radio = tensor.shape[0] // 4
+                tensor = tensor[mid_layer-radio:mid_layer+radio, :, :]
                 tensors = list(torch.split(tensor, self.input_dim, dim=0))
                 if tensors[-1].shape[0] < self.input_dim:
                     tensors.pop()
@@ -45,11 +50,14 @@ class ImageFromMRI(Dataset):
         for file in sorted(os.listdir(self.t2_dir)):
             if file.endswith(".nii"):
                 path = os.path.join(self.t2_dir, file)
-                data = nib.load(path).get_fdata()  # type: ignore
+                data = load(path).get_fdata()
                 tensor = torch.tensor(data)
                 tensor = (tensor - tensor.min()) / \
                     (tensor.max() - tensor.min())
                 tensor = torch.permute(tensor, (2, 0, 1)).float()
+                mid_layer = tensor.shape[0] // 2
+                radio = tensor.shape[0] // 4
+                tensor = tensor[mid_layer-radio:mid_layer+radio, :, :]
                 tensors = list(torch.split(tensor, self.input_dim, dim=0))
                 if tensors[-1].shape[0] < self.input_dim:
                     tensors.pop()
@@ -60,11 +68,14 @@ class ImageFromMRI(Dataset):
         for file in sorted(os.listdir(self.t1ce_dir)):
             if file.endswith(".nii"):
                 path = os.path.join(self.t1ce_dir, file)
-                data = nib.load(path).get_fdata()  # type: ignore
+                data = load(path).get_fdata()
                 tensor = torch.tensor(data)
                 tensor = (tensor - tensor.min()) / \
                     (tensor.max() - tensor.min())
                 tensor = torch.permute(tensor, (2, 0, 1)).float()
+                mid_layer = tensor.shape[0] // 2
+                radio = tensor.shape[0] // 4
+                tensor = tensor[mid_layer-radio:mid_layer+radio, :, :]
                 tensors = list(torch.split(tensor, self.input_dim, dim=0))
                 if tensors[-1].shape[0] < self.input_dim:
                     tensors.pop()

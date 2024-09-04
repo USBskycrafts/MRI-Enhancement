@@ -21,6 +21,12 @@ def render_results(origin, gt, result: List[torch.Tensor], batch, config, *args,
     lock = params["lock"]
     render_path = params["render_path"]
     o, t, r = list(zip(origin, gt, result))[len(result) // 2]
+    if o.shape[1] != 1:
+        o = o[:, o.shape[1] // 2, :, :]
+    if t.shape[1] != 1:
+        t = t[:, t.shape[1] // 2, :, :]
+    if r.shape[1] != 1:
+        r = r[:, r.shape[1] // 2, :, :]
     o = torch.permute(o, (1, 2, 0))
     t = torch.permute(t, (1, 2, 0))
     r = torch.permute(r, (1, 2, 0))
@@ -55,14 +61,12 @@ class ResultRenderer:
         concurrent.futures.wait(self.futures)
 
     def render_results(self, data: Dict[str, torch.Tensor], result: List[torch.Tensor], batch,  *args, **params):
-        def task(data, result):
-            t1 = torch.detach(data["t1"].cpu()).squeeze()
-            t1ce = torch.detach(data["t1ce"].cpu()).squeeze()
-            t1 = t1.split(1, dim=0)
-            t1ce = t1ce.split(1, dim=0)
-
-            render_results(t1, t1ce, result, batch,
-                           self.config, *args, lock=self.lock, render_path=self.render_path, **params)
-        future = self.executor.submit(task, data, result)
-        self.futures.append(future)
+        t1 = torch.detach(data["t1"].cpu()).squeeze()
+        t1ce = torch.detach(data["t1ce"].cpu()).squeeze()
+        t1 = t1.split(1, dim=0)
+        t1ce = t1ce.split(1, dim=0)
+        render_results(t1, t1ce, result, batch,
+                       self.config, *args, lock=self.lock, render_path=self.render_path, **params)
+        # future = self.executor.submit(task, data, result)
+        # self.futures.append(future)
         # task(data, result)

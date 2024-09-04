@@ -22,7 +22,7 @@ class NIFTI1Loader(Dataset):
         for (T1, T2, T1CE) in zip(sorted(os.listdir(self.t1_dir)),
                                   sorted(os.listdir(self.t2_dir)),
                                   sorted(os.listdir(self.t1ce_dir))):
-            if T1.endwith(".nii") and T2.endwith(".nii") and T1CE.endwith(".nii"):
+            if T1.endswith(".nii") and T2.endswith(".nii") and T1CE.endswith(".nii"):
                 def load_from_path(dir, path):
                     path = os.path.join(dir, path)
                     image = nib.nifti1.load(path)
@@ -36,7 +36,13 @@ class NIFTI1Loader(Dataset):
                 T1, T2, T1CE = map(load_from_path, [
                     self.t1_dir, self.t2_dir, self.t1ce_dir], [T1, T2, T1CE])
                 self.data_list.append({
-                    "t1", T1,
-                    "t2", T2,
-                    "t1ce", T1CE
+                    "t1": T1,
+                    "t2": T2,
+                    "t1ce": T1CE
                 })
+
+    def __getitem__(self, index):
+        return self.data_list[index]
+
+    def __len__(self):
+        return len(self.data_list)
