@@ -116,10 +116,7 @@ class Decomposer(nn.Module):
         self.map_decoder = Decoder(output_channels)
         self.proton_decoder = Decoder(output_channels)
 
-        self.reconstruct_loss = nn.ModuleList(
-            # for each decoder
-            nn.L1Loss() for _ in range(2)
-        )
+        self.reconstruct_loss = nn.MSELoss()
         self.formalized_loss = nn.ModuleList(
             ElementLoss() for _ in range(2)
         )
@@ -151,8 +148,7 @@ class Decomposer(nn.Module):
         else:
             raise ValueError(f"Unknown category: {category}")
         # print(reconstructed.shape, target.shape, self.reconstruct_loss)
-        loss = sum(map(lambda f: f(target, reconstructed),
-                       self.reconstruct_loss))
+        loss = self.reconstruct_loss(reconstructed, target)
         loss += 0.001 * (
             self.formalized_loss[0](proton) +
             self.formalized_loss[1](mapping)
@@ -319,7 +315,7 @@ class Generator(nn.Module):
             "proton": N1,
             "target": t1_enhanced
         }).values()
-        loss += _loss
+        loss += _loss * 10
 
         _loss, fake_label, real_label = self.discriminator({
             "fake": enhanced,
