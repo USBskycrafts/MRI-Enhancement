@@ -49,4 +49,16 @@ class TransformerLayer(nn.Module):
         groups = groups.flatten(2, 3).permute(0, 2, 1)
         # groups with position embedding
         groups += self.position_embedding
-        return self.encoder(groups)
+        groups = self.encoder(groups)
+        # then we transform the tokens back to the groups
+
+        # [B, H // G, W // G, G, G, C]
+        groups = groups.reshape(-1,
+                                x.shape[2] // self.group,
+                                x.shape[3] // self.group,
+                                self.group, self.group, self.input_dim)
+
+        groups = groups.permute(
+            0, 1, 3, 2, 4, 5).reshape(-1, x.shape[2], x.shape[3], self.input_dim)
+        assert groups.shape == x.shape
+        return groups
