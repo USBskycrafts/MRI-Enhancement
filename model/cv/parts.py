@@ -96,7 +96,7 @@ class ElementLoss(nn.Module):
     def __init__(self):
         super(ElementLoss, self).__init__()
         # 6 main elements in the head
-        self.elements = nn.parameter.Parameter(torch.randn(10))
+        self.elements = nn.parameter.Parameter(torch.randn(4))
 
     def forward(self, x):
         loss = 1
@@ -195,23 +195,42 @@ class Enhancer(nn.Module):
                 "generated": reconstructed}
 
 
+class GramLoss(nn.Module):
+    def __init__(self):
+        super(GramLoss, self).__init__()
+        self.mse_criterion = nn.MSELoss()
+
+    def forward(self, features, targets, weights=None):
+        if weights is None:
+            weights = [1/len(features)] * len(features)
+
+        gram_loss = 0
+        for f, t, w in zip(features, targets, weights):
+            gram_loss += self.mse_criterion(self.gram(f), self.gram(t)) * w
+        return gram_loss
+
+    def gram(self, x):
+        b, c, h, w = x.size()
+        g = torch.bmm(x.view(b, c, h*w), x.view(b, c, h*w).transpose(1, 2))
+        return g.div(h*w)
+
+
 class Classifier(nn.Module):
     def __init__(self, input_channels, n_classes):
         super(Classifier, self).__init__()
         self.input_channels = input_channels
-        self.output_channels = input_channels
         self.n_classes = n_classes
 
+        self.encoder = Encoder(input_channels)
         self.classifier = nn.Sequential(
-            Encoder(input_channels),
-            Decoder(input_channels),
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Flatten(),
-            nn.Linear(input_channels, n_classes),
+            nn.Linear(input_channels * 128, n_classes),
             nn.Softmax(dim=1)
         )
 
         self.cross_entropy = nn.CrossEntropyLoss()
+        self.gram_loss = GramLoss()
 
     def forward(self, data):
         """classify the image into one of the classes
@@ -229,18 +248,24 @@ class Classifier(nn.Module):
         fake = data["fake"]
         real = data["real"]
 
-        fake_label = self.classifier(fake)
-        real_label = self.classifier(real)
+        f_features = list(self.encoder(fake).values())
+        r_features = list(self.encoder(real).values())
 
-        loss = self.cross_entropy(fake_label,
-                                  torch.zeros(fake_label.shape[0],
-                                              dtype=torch.long,
-                                              device=fake_label.device)) \
-            + self.cross_entropy(real_label,
-                                 torch.ones(real_label.shape[0],
-                                            dtype=torch.long,
-                                            device=real_label.device))
-        loss *= 10 / 2
+        fake_label = self.classifier(f_features[-1])
+        real_label = self.classifier(r_features[-1])
+
+        # the cross entropy loss
+        loss = (self.cross_entropy(fake_label,
+                                   torch.zeros(fake_label.shape[0],
+                                               dtype=torch.long,
+                                               device=fake_label.device))
+                + self.cross_entropy(real_label,
+                                     torch.ones(real_label.shape[0],
+                                                dtype=torch.long,
+                                                device=real_label.device))) / 2
+
+        # the gram loss
+        loss += self.gram_loss(f_features, r_features)
 
         return {"loss": loss,
                 "fake_label": fake_label,
