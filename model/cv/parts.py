@@ -290,7 +290,7 @@ class Generator(nn.Module):
             "proton": N1,
             "target": t1_enhanced
         }).values()
-        loss += _loss * 10
+        loss += _loss
 
         _loss, fake_label, real_label = self.discriminator({
             "fake": enhanced,
