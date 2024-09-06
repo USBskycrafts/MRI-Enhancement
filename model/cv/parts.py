@@ -117,9 +117,9 @@ class Decomposer(nn.Module):
         self.proton_decoder = Decoder(output_channels)
 
         self.reconstruct_loss = nn.MSELoss()
-        self.formalized_loss = nn.ModuleList(
-            ElementLoss() for _ in range(2)
-        )
+        # self.formalized_loss = nn.ModuleList(
+        #     ElementLoss() for _ in range(2)
+        # )
     from typing import Dict
 
     def forward(self, data: Dict[str, torch.Tensor]):
@@ -149,10 +149,10 @@ class Decomposer(nn.Module):
             raise ValueError(f"Unknown category: {category}")
         # print(reconstructed.shape, target.shape, self.reconstruct_loss)
         loss = self.reconstruct_loss(reconstructed, target)
-        loss += 0.001 * (
-            self.formalized_loss[0](proton) +
-            self.formalized_loss[1](mapping)
-        ) / 2
+        # loss += 0.001 * (
+        #     self.formalized_loss[0](proton) +
+        #     self.formalized_loss[1](mapping)
+        # ) / 2
         return {"loss": loss,
                 "map": mapping,
                 "proton": proton}
@@ -171,7 +171,7 @@ class Enhancer(nn.Module):
 
         self.loss = nn.L1Loss()
 
-        self.formalized_loss = ElementLoss()
+        # self.formalized_loss = ElementLoss()
 
     def forward(self, data):
         """an enhancement net to enhance the T1 map
@@ -186,7 +186,7 @@ class Enhancer(nn.Module):
         enhanced_map = self.enhancer(map)
         reconstructed = proton * (1 - torch.exp(-enhanced_map))
         loss = self.loss(target, reconstructed)
-        loss += self.formalized_loss(enhanced_map) * 0.001
+        # loss += self.formalized_loss(enhanced_map) * 0.001
         return {"loss": loss,
                 "generated": reconstructed}
 

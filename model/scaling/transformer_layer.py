@@ -21,20 +21,20 @@ class TransformerLayer(nn.Module):
         # WARN: the image should be padded to the multiple of group
 
         # first, calculate the size of the padded image
-        x_diff = x.shape[2] - (x.shape[2] + self.group -
-                               1) // self.group * self.group
-        y_diff = x.shape[3] - (x.shape[3] + self.group -
-                               1) // self.group * self.group
+        x_diff = (x.shape[2] + self.group -
+                  1) // self.group * self.group - x.shape[2]
+        y_diff = (x.shape[3] + self.group -
+                  1) // self.group * self.group - x.shape[3]
         assert x_diff >= 0 and y_diff >= 0, "the image should be padded to the multiple of group"
         padding_size = (
-            x_diff // 2,
-            x_diff // 2 + 1 if x_diff % 2 == 1 else 0,
             y_diff // 2,
-            y_diff // 2 + 1 if y_diff % 2 == 1 else 0,
+            y_diff // 2 + (1 if y_diff % 2 == 1 else 0),
+            x_diff // 2,
+            x_diff // 2 + (1 if x_diff % 2 == 1 else 0),
         )
         x = F.pad(x, padding_size, mode='reflect')
-        assert x.shape[2] % self.group == 0
-        assert x.shape[3] % self.group == 0
+        assert x.shape[2] % self.group == 0, f"{x.shape}"
+        assert x.shape[3] % self.group == 0, f"{x.shape}"
         return x
 
     def forward(self, x):
@@ -60,5 +60,6 @@ class TransformerLayer(nn.Module):
 
         groups = groups.permute(
             0, 1, 3, 2, 4, 5).reshape(-1, x.shape[2], x.shape[3], self.input_dim)
+        groups = groups.permute(0, 3, 1, 2)
         assert groups.shape == x.shape
         return groups
