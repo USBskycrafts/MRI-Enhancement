@@ -3,7 +3,7 @@ import os
 import functools
 
 
-class ConfigParser:
+class ConfigParser(configparser.RawConfigParser):
     def __init__(self, *args, **params):
         self.default_config = configparser.RawConfigParser(*args, **params)
         self.local_config = configparser.RawConfigParser(*args, **params)
@@ -11,7 +11,8 @@ class ConfigParser:
 
     def read(self, filenames, encoding=None):
         if os.path.exists("config/default_local.config"):
-            self.local_config.read("config/default_local.config", encoding=encoding)
+            self.local_config.read(
+                "config/default_local.config", encoding=encoding)
         else:
             self.local_config.read("config/default.config", encoding=encoding)
 

@@ -27,13 +27,13 @@ def render_results(origin, gt, result: List[torch.Tensor], batch, config, *args,
     with lock:
         ax = plt.subplot(1, 3, 1)
         ax.set_title("T1")
-        plt.imshow(o.cpu().numpy(), cmap="gray")
+        plt.imshow(o.cpu().numpy(), cmap="gray", vmax=1, vmin=0)
         bx = plt.subplot(1, 3, 2)
         bx.set_title("T1CE")
-        plt.imshow(t.cpu().numpy(), cmap="gray")
+        plt.imshow(t.cpu().numpy(), cmap="gray", vmax=1, vmin=0)
         cx = plt.subplot(1, 3, 3)
         cx.set_title("Result")
-        plt.imshow(r.cpu().numpy(), cmap="gray")
+        plt.imshow(r.cpu().numpy(), cmap="gray", vmax=1, vmin=0)
         plt.savefig(f"{render_path}/{batch}.png",
                     dpi=600, bbox_inches='tight')
     return
