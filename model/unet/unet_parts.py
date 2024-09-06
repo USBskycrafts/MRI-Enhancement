@@ -16,11 +16,11 @@ class DoubleConv(nn.Module):
             nn.Conv2d(in_channels, mid_channels,
                       kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(mid_channels),
-            nn.LeakyReLU(inplace=True),
+            nn.ReLU(),
             nn.Conv2d(mid_channels, out_channels,
                       kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(out_channels),
-            nn.LeakyReLU(inplace=True),
+            nn.ReLU(),
         )
 
     def forward(self, x):
