@@ -188,6 +188,7 @@ class Enhancer(nn.Module):
         loss = self.loss(target, reconstructed)
         # loss += self.formalized_loss(enhanced_map) * 0.001
         return {"loss": loss,
+                "map": enhanced_map,
                 "generated": reconstructed}
 
 
@@ -289,6 +290,7 @@ class Generator(nn.Module):
         self.NH_loss = nn.L1Loss()
         self.cross_entropy = nn.CrossEntropyLoss()
         self.discriminator = discriminator
+        self.T1CE_loss = nn.L1Loss()
 
     def forward(self, data):
         t1_weighted = data["T1"]
@@ -310,12 +312,21 @@ class Generator(nn.Module):
         loss += _loss
         loss += self.NH_loss(N1, N2)
 
-        _loss, enhanced = self.enhancer({
+        _loss, T1CE_descomposed, N1CE = self.decomposer({
+            "image": t1_enhanced,
+            "target": t1_enhanced,
+            "type": "T1"
+        }).values()
+        loss += _loss
+        loss += self.NH_loss(N1, N1CE)
+
+        _loss, T1CE_enhanced, enhanced = self.enhancer({
             "map": T1,
             "proton": N1,
             "target": t1_enhanced
         }).values()
         loss += _loss
+        loss += self.T1CE_loss(T1CE_enhanced.detach(), T1CE_descomposed)
 
         _loss, fake_label, real_label = self.discriminator({
             "fake": enhanced,
