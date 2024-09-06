@@ -4,10 +4,11 @@ import torch.nn.functional as F
 
 
 class TransformerLayer(nn.Module):
-    def __init__(self, input_dim: int, group=3):
+    def __init__(self, input_dim: int, group=3, attention_type="local"):
         super(TransformerLayer, self).__init__()
         self.input_dim = input_dim
         self.group = group
+        self.attention_type = attention_type
 
         self.position_embedding = nn.parameter.Parameter(torch.randn(
             (1, group * group, input_dim)
@@ -39,14 +40,20 @@ class TransformerLayer(nn.Module):
 
     def forward(self, x):
         x = self.padding(x)
-        group_list = torch.split(x, self.group, dim=2)
-        group_list = sum(map(lambda e: torch.split(
-            e, self.group, dim=3), group_list), ())
-        # now the groups' shape is [B * H * W // (G * G), C, G, G]
-        groups = torch.cat(group_list, dim=0)
-        # then we transform the groups to the standard tokens
-        # [B * H * W // (G * G), G * G, C]
-        groups = groups.flatten(2, 3).permute(0, 2, 1)
+        if self.attention_type == "local":
+            group_list = torch.split(x, self.group, dim=2)
+            group_list = sum(map(lambda e: torch.split(
+                e, self.group, dim=3), group_list), ())
+            # now the groups' shape is [B * H * W // (G * G), C, G, G]
+            groups = torch.cat(group_list, dim=0)
+            # then we transform the groups to the standard tokens
+            # [B * H * W // (G * G), G * G, C]
+            groups = groups.flatten(2, 3).permute(0, 2, 1)
+        elif self.attention_type == "long":
+            stride = (x.shape[2] // self.group, x.shape[3] // self.group)
+            raise NotImplementedError("not implemented")
+        else:
+            raise NotImplementedError("please check the attention type")
         # groups with position embedding
         groups += self.position_embedding
         groups = self.encoder(groups)
@@ -57,7 +64,7 @@ class TransformerLayer(nn.Module):
                                 x.shape[2] // self.group,
                                 x.shape[3] // self.group,
                                 self.group, self.group, self.input_dim)
-
+        # [B, H, W, C]
         groups = groups.permute(
             0, 1, 3, 2, 4, 5).reshape(-1, x.shape[2], x.shape[3], self.input_dim)
         groups = groups.permute(0, 3, 1, 2)
