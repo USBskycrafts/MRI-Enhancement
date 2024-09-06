@@ -149,10 +149,10 @@ class Decomposer(nn.Module):
             raise ValueError(f"Unknown category: {category}")
         # print(reconstructed.shape, target.shape, self.reconstruct_loss)
         loss = self.reconstruct_loss(reconstructed, target)
-        loss += 0.001 * (
-            self.formalized_loss[0](proton) +
-            self.formalized_loss[1](mapping)
-        ) / 2
+        # loss += 0.001 * (
+        #     self.formalized_loss[0](proton) +
+        #     self.formalized_loss[1](mapping)
+        # ) / 2
         return {"loss": loss,
                 "map": mapping,
                 "proton": proton}
@@ -186,7 +186,7 @@ class Enhancer(nn.Module):
         enhanced_map = self.enhancer(map)
         reconstructed = proton * (1 - torch.exp(-enhanced_map))
         loss = self.loss(target, reconstructed)
-        loss += self.formalized_loss(enhanced_map) * 0.001
+        # loss += self.formalized_loss(enhanced_map) * 0.001
         return {"loss": loss,
                 "generated": reconstructed}
 
