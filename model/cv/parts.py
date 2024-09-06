@@ -295,14 +295,14 @@ class Generator(nn.Module):
         t2_weighted = data["T2"]
         t1_enhanced = data["T1CE"]
         loss = 0
-        _loss, N1, T1 = self.decomposer({
+        _loss, T1, N1 = self.decomposer({
             "image": t1_weighted,
             "target": t1_weighted,
             "type": "T1"
         }).values()
         loss += _loss
 
-        _loss, N2, T2 = self.decomposer({
+        _loss, T2, N2 = self.decomposer({
             "image": t2_weighted,
             "target": t2_weighted,
             "type": "T2"
