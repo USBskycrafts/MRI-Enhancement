@@ -49,24 +49,25 @@ class TransformerLayer(nn.Module):
             # then we transform the groups to the standard tokens
             # [B * H * W // (G * G), G * G, C]
             groups = groups.flatten(2, 3).permute(0, 2, 1)
+            # groups with position embedding
+            groups += self.position_embedding
+            groups = self.encoder(groups)
+            # then we transform the tokens back to the groups
+
+            # [B, H // G, W // G, G, G, C]
+            groups = groups.reshape(-1,
+                                    x.shape[2] // self.group,
+                                    x.shape[3] // self.group,
+                                    self.group, self.group, self.input_dim)
+            # [B, H, W, C]
+            groups = groups.permute(
+                0, 1, 3, 2, 4, 5).reshape(-1, x.shape[2], x.shape[3], self.input_dim)
+            groups = groups.permute(0, 3, 1, 2)
+            assert groups.shape == x.shape
+            return groups
         elif self.attention_type == "long":
             stride = (x.shape[2] // self.group, x.shape[3] // self.group)
+
             raise NotImplementedError("not implemented")
         else:
             raise NotImplementedError("please check the attention type")
-        # groups with position embedding
-        groups += self.position_embedding
-        groups = self.encoder(groups)
-        # then we transform the tokens back to the groups
-
-        # [B, H // G, W // G, G, G, C]
-        groups = groups.reshape(-1,
-                                x.shape[2] // self.group,
-                                x.shape[3] // self.group,
-                                self.group, self.group, self.input_dim)
-        # [B, H, W, C]
-        groups = groups.permute(
-            0, 1, 3, 2, 4, 5).reshape(-1, x.shape[2], x.shape[3], self.input_dim)
-        groups = groups.permute(0, 3, 1, 2)
-        assert groups.shape == x.shape
-        return groups

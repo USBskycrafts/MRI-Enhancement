@@ -321,12 +321,14 @@ class Generator(nn.Module):
             loss += _loss
             loss += self.NH_loss(N1, N1CE)
 
-            _loss, T1CE_enhanced, enhanced = self.enhancer({
-                "map": T1,
-                "proton": N1,
-                "target": t1_enhanced
-            }).values()
-            loss += _loss
+        _loss, T1CE_enhanced, enhanced = self.enhancer({
+            "map": T1,
+            "proton": N1,
+            "target": t1_enhanced
+        }).values()
+        loss += _loss
+
+        if mode == "train":
             loss += self.T1CE_loss(T1CE_enhanced.detach(), T1CE_descomposed)
 
         _loss, fake_label, real_label = self.discriminator({

@@ -12,6 +12,6 @@ notebook
 result
 .vscode
 model/Proposed
-model/v4_5
+model/v4.5
 model/sample
 tensorboard
