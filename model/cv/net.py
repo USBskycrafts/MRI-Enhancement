@@ -41,17 +41,24 @@ class ProposedModel(nn.Module):
             "gt": t1ce.detach(),
         }, acc_result, config, mode)
 
-        if mode == "train" and local != None:
+        if local != None:
             writer: SummaryWriter = local.writer
-            global_step = local.global_step
-            writer.add_scalar("loss/discriminator",
-                              float(d_loss), global_step=global_step)
-            writer.add_scalar("loss/generator", float(g_loss),
-                              global_step=global_step)
-            writer.add_scalar("psnr", acc_result["PSNR"][-1],
-                              global_step=global_step)
-            writer.add_scalar("ssim", acc_result["SSIM"][-1],
-                              global_step=global_step)
+            if mode == "train":
+                global_step = local.global_step
+                writer.add_scalar("loss/discriminator",
+                                  float(d_loss), global_step=global_step)
+                writer.add_scalar("loss/generator", float(g_loss),
+                                  global_step=global_step)
+                writer.add_scalar(f"{mode}/psnr", acc_result["PSNR"][-1],
+                                  global_step=global_step)
+                writer.add_scalar(f"{mode}/ssim", acc_result["SSIM"][-1],
+                                  global_step=global_step)
+            elif mode == "valid":
+                eval_step = local.eval_step
+                writer.add_scalar(f"{mode}/psnr", acc_result["PSNR"][-1],
+                                  global_step=eval_step)
+                writer.add_scalar(f"{mode}/ssim", acc_result["SSIM"][-1],
+                                  global_step=eval_step)
 
         return {
             "loss": loss,

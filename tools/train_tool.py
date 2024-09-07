@@ -128,7 +128,7 @@ def train(parameters, config, gpu_list, do_test=False):
 
             global_step += 1
             writer.add_scalar(config.get("output", "model_name") +
-                              "_train_iter", float(loss), global_step)
+                              "/train_iter", float(loss), global_step)
 
         output_info = output_function(acc_result, config)
         delta_t = timer() - start_time
@@ -143,13 +143,13 @@ def train(parameters, config, gpu_list, do_test=False):
 
         checkpoint(os.path.join(output_path, "%d.pkl" % current_epoch), model, optimizer, current_epoch, config,
                    global_step)
-        writer.add_scalar(config.get("output", "model_name") + "_train_epoch", float(total_loss) / (step + 1),
+        writer.add_scalar(config.get("output", "model_name") + "/train_epoch", float(total_loss) / (step + 1),
                           current_epoch)
 
         if current_epoch % test_time == 0:
             with torch.no_grad():
                 valid(model, parameters["valid_dataset"], current_epoch,
-                      writer, config, gpu_list, output_function)
+                      writer, config, gpu_list, output_function, local=local)
                 if do_test:
                     valid(model, test_dataset, current_epoch, writer,
-                          config, gpu_list, output_function, mode="test")
+                          config, gpu_list, output_function, mode="test", local=local)

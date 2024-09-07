@@ -42,7 +42,7 @@ def output_value(epoch, mode, step, time, loss, info, end, config):
         print(s)
 
 
-def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode="valid"):
+def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode="valid", local=None):
     model.eval()
 
     acc_result = None
@@ -54,6 +54,10 @@ def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode
 
     output_time = config.getint("output", "output_time")
     step = -1
+    if local:
+        initialized = getattr(local, 'eval_step', None)
+        if initialized is None:
+            local.eval_step = 0
     more = ""
     if total_len < 10000:
         more = "\t"
@@ -66,11 +70,13 @@ def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode
                 else:
                     data[key] = Variable(data[key])
 
-        results = model(data, config, gpu_list, acc_result, "valid")
+        results = model(data, config, gpu_list, acc_result, "valid", local)
 
         loss, acc_result = results["loss"], results["acc_result"]
         total_loss += float(loss)
         cnt += 1
+        if local is not None:
+            local.eval_step += 1
 
         if step % output_time == 0:
             delta_t = timer() - start_time
@@ -90,7 +96,7 @@ def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode
         gen_time_str(delta_t), gen_time_str(delta_t * (total_len - step - 1) / (step + 1))),
         "%.3lf" % (total_loss / (step + 1)), output_info, None, config)
 
-    writer.add_scalar(config.get("output", "model_name") + "_eval_epoch", float(total_loss) / (step + 1),
+    writer.add_scalar(config.get("output", "model_name") + "/eval_epoch", float(total_loss) / (step + 1),
                       epoch)
 
     model.train()
