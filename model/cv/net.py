@@ -33,7 +33,7 @@ class ProposedModel(nn.Module):
         d_loss, fake_label, real_label = self.discriminator({
             "fake": fake,
             "real": t1ce
-        }).values()
+        }, mode).values()
         loss += d_loss
 
         acc_result = accumulate_cv_data({

@@ -292,7 +292,7 @@ class Generator(nn.Module):
         self.discriminator = discriminator
         self.T1CE_loss = nn.L1Loss()
 
-    def forward(self, data):
+    def forward(self, data, mode="train"):
         t1_weighted = data["T1"]
         t2_weighted = data["T2"]
         t1_enhanced = data["T1CE"]
@@ -304,29 +304,30 @@ class Generator(nn.Module):
         }).values()
         loss += _loss
 
-        _loss, T2, N2 = self.decomposer({
-            "image": t2_weighted,
-            "target": t2_weighted,
-            "type": "T2"
-        }).values()
-        loss += _loss
-        loss += self.NH_loss(N1, N2)
+        if mode == "train":
+            _loss, T2, N2 = self.decomposer({
+                "image": t2_weighted,
+                "target": t2_weighted,
+                "type": "T2"
+            }).values()
+            loss += _loss
+            loss += self.NH_loss(N1, N2)
 
-        _loss, T1CE_descomposed, N1CE = self.decomposer({
-            "image": t1_enhanced,
-            "target": t1_enhanced,
-            "type": "T1"
-        }).values()
-        loss += _loss
-        loss += self.NH_loss(N1, N1CE)
+            _loss, T1CE_descomposed, N1CE = self.decomposer({
+                "image": t1_enhanced,
+                "target": t1_enhanced,
+                "type": "T1"
+            }).values()
+            loss += _loss
+            loss += self.NH_loss(N1, N1CE)
 
-        _loss, T1CE_enhanced, enhanced = self.enhancer({
-            "map": T1,
-            "proton": N1,
-            "target": t1_enhanced
-        }).values()
-        loss += _loss
-        loss += self.T1CE_loss(T1CE_enhanced.detach(), T1CE_descomposed)
+            _loss, T1CE_enhanced, enhanced = self.enhancer({
+                "map": T1,
+                "proton": N1,
+                "target": t1_enhanced
+            }).values()
+            loss += _loss
+            loss += self.T1CE_loss(T1CE_enhanced.detach(), T1CE_descomposed)
 
         _loss, fake_label, real_label = self.discriminator({
             "fake": enhanced,

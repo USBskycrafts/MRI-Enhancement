@@ -31,9 +31,8 @@ class NIFTI1Loader(Dataset):
                     tensor = torch.Tensor(image.get_fdata())
                     tensor = tensor.permute(2, 0, 1)
                     # normalize
-                    mean = tensor.mean()
-                    std = tensor.std()
-                    tensor = (tensor - mean) / std
+                    tensor = (tensor - tensor.min()) / \
+                        (tensor.max() - tensor.min())
                     return tensor
                 T1, T2, T1CE = map(load_from_path, [
                     self.t1_dir, self.t2_dir, self.t1ce_dir], [T1, T2, T1CE])

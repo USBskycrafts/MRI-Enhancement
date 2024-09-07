@@ -35,7 +35,6 @@ class Down(nn.Module):
         self.maxpool_conv = nn.Sequential(
             nn.MaxPool2d(2),
             DoubleConv(in_channels, out_channels),
-            nn.Dropout(0.5),
         )
 
     def forward(self, x):
@@ -59,7 +58,6 @@ class Up(nn.Module):
             self.conv = DoubleConv(in_channels, out_channels)
         self.conv = nn.Sequential(
             self.conv,
-            nn.Dropout(0.5),
         )
 
     def forward(self, x1, x2):
@@ -69,7 +67,7 @@ class Up(nn.Module):
         diffX = x2.size()[3] - x1.size()[3]
 
         x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
-                        diffY // 2, diffY - diffY // 2])
+                        diffY // 2, diffY - diffY // 2], mode='reflect')
         # if you have padding issues, see
         # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
         # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
@@ -82,7 +80,7 @@ class OutConv(nn.Module):
         super(OutConv, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=1),
-            nn.LeakyReLU()
+            nn.ReLU()
         )
 
     def forward(self, x):
