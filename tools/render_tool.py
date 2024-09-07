@@ -27,13 +27,13 @@ def render_results(origin, gt, result: List[torch.Tensor], batch, config, *args,
     with lock:
         ax = plt.subplot(1, 3, 1)
         ax.set_title("T1")
-        plt.imshow(o.cpu().numpy(), cmap="gray", vmax=1, vmin=0)
+        plt.imshow(o.cpu().numpy(), cmap="gray")
         bx = plt.subplot(1, 3, 2)
         bx.set_title("T1CE")
-        plt.imshow(t.cpu().numpy(), cmap="gray", vmax=1, vmin=0)
+        plt.imshow(t.cpu().numpy(), cmap="gray")
         cx = plt.subplot(1, 3, 3)
         cx.set_title("Result")
-        plt.imshow(r.cpu().numpy(), cmap="gray", vmax=1, vmin=0)
+        plt.imshow(r.cpu().numpy(), cmap="gray")
         plt.savefig(f"{render_path}/{batch}.png",
                     dpi=600, bbox_inches='tight')
     return
@@ -46,6 +46,7 @@ class ResultRenderer:
         self.logger = logging.getLogger(__name__)
         self.lock = threading.Lock()
         self.render_path = os.path.join(config.get("test", "render_path"),
+                                        config.get("output", "model_name"),
                                         time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime()))
         if not os.path.exists(self.render_path):
             os.makedirs(self.render_path)
