@@ -2,9 +2,11 @@ from model.scaling.cross_embedding import CrossScaleEmbedding
 import unittest
 import torch
 import torch.nn as nn
+from .utils import splitter, timer
 
 
 class TestCrossScaleEmbedding(unittest.TestCase):
+    @splitter
     def test_regular_shape(self):
         x = torch.Tensor(8, 16, 240, 240)
 
@@ -24,6 +26,7 @@ class TestCrossScaleEmbedding(unittest.TestCase):
         x = model(y, y, input_size=x.shape)
         print(x.shape, y.shape)
 
+    @splitter
     def test_irregular_shape(self):
         x = torch.Tensor(8, 16, 37, 40)
         model = CrossScaleEmbedding(16, 512)

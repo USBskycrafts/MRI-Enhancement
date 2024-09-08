@@ -3,9 +3,11 @@ import torch
 import torch.nn as nn
 import torch.nn.parameter
 from model.scaling.transformer_layer import TransformerLayer
+from .utils import timer, splitter
 
 
 class TestTransformerLayer(unittest.TestCase):
+    @splitter
     def test_encode(self):
         # TODO: Implement test for encode method
         encoder = TransformerLayer(1, 3)
@@ -13,6 +15,7 @@ class TestTransformerLayer(unittest.TestCase):
         output = encoder(input)
         print(output.shape)
 
+    @splitter
     def test_padding(self):
         encoder = TransformerLayer(1, 3)
         input = torch.arange(0, 25, dtype=torch.float32).reshape(1, 1, 5, 5)
@@ -30,6 +33,7 @@ class TestTransformerLayer(unittest.TestCase):
         output = encoder(input)
         print(output.shape)
 
+    @splitter
     def test_correct_reshape(self):
         class ByPass(nn.Module):
             def __init__(self):
