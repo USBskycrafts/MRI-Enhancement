@@ -60,7 +60,7 @@ class CrossScaleEmbedding(nn.Module):
         else:
             return (kernel_size - stride + 1) // 2
 
-    def forward(self, x, y=Union[None, torch.Tensor]):
+    def forward(self, x, y=Union[None, torch.Tensor], input_size=Union[None, torch.Size]):
         if not self.reversed:
             # from [B, C, H, W] to [B, H // stride, W // stride, C * stride]
             tokens = torch.cat([conv(x)
@@ -69,18 +69,15 @@ class CrossScaleEmbedding(nn.Module):
             return tokens
         else:
             assert isinstance(y, torch.Tensor)
+            assert isinstance(input_size, torch.Size)
             assert x.shape == y.shape
             features = torch.zeros(
                 x.shape[0], x.shape[1] * 2, x.shape[2], x.shape[3])
             features[:, ::2, :, :] = x
             features[:, 1::2, :, :] = y
             offset = 0
-            output = torch.zeros(
-                [features.shape[0], self.input_dim,
-                 features.shape[2] * self.stride, features.shape[3] * self.stride])
+            output = torch.zeros(*input_size)
             for i, d in enumerate(self.dim_list):
                 output += self.convs[i](features[:,
-                                        offset:offset + 2 * d, :, :])
-            assert output.shape[2] == x.shape[2] * self.stride
-            assert output.shape[3] == x.shape[3] * self.stride
+                                        offset:offset + 2 * d, :, :], output_size=input_size)
             return output
