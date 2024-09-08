@@ -329,7 +329,7 @@ class Generator(nn.Module):
         loss += _loss
 
         if mode == "train":
-            loss += self.T1CE_loss(T1CE_enhanced.detach(), T1CE_descomposed)
+            loss += self.T1CE_loss(T1CE_enhanced, T1CE_descomposed.detach())
 
         _loss, fake_label, real_label = self.discriminator({
             "fake": enhanced,

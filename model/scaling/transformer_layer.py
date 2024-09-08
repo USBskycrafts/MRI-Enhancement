@@ -17,6 +17,7 @@ class TransformerLayer(nn.Module):
             d_model=input_dim,
             nhead=1,
         )
+        self.groups = 0
 
     def padding(self, x):
         # WARN: the image should be padded to the multiple of group
@@ -49,6 +50,10 @@ class TransformerLayer(nn.Module):
             # then we transform the groups to the standard tokens
             # [B * H * W // (G * G), G * G, C]
             groups = groups.flatten(2, 3).permute(0, 2, 1)
+
+            self.groups = groups
+            print(groups.shape, self.position_embedding.shape)
+
             # groups with position embedding
             groups += self.position_embedding
             groups = self.encoder(groups)
@@ -68,6 +73,21 @@ class TransformerLayer(nn.Module):
         elif self.attention_type == "long":
             stride = (x.shape[2] // self.group, x.shape[3] // self.group)
 
-            raise NotImplementedError("not implemented")
+            # project the groups
+            groups = F.unfold(x, kernel_size=stride,
+                              stride=(stride))
+            groups = groups.reshape(-1, self.input_dim,
+                                    groups.shape[1] // self.input_dim, groups.shape[2])
+            # groups = groups.permute(0, 1, 3, 2)
+            groups = groups.reshape(-1, self.input_dim,
+                                    self.group * self.group)
+            groups = groups.permute(0, 2, 1)
+            groups += self.position_embedding
+            groups = self.encoder(groups)
+            groups = groups.permute(0, 2, 1)
+            # groups = groups.reshape(-1, self.input_dim,
+            #                         self.group, self.group)
+            print(x, groups)
+            return groups
         else:
             raise NotImplementedError("please check the attention type")

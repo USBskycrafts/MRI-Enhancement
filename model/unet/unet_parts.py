@@ -21,6 +21,7 @@ class DoubleConv(nn.Module):
                       kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(out_channels),
             nn.LeakyReLU(),
+            nn.Dropout(0.3)
         )
 
     def forward(self, x):
