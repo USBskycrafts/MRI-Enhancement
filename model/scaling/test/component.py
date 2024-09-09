@@ -78,7 +78,7 @@ class TestCrossformer(unittest.TestCase):
     @timer
     def test_irregular_shape(self):
         self.crossformer = Crossformer()
-        x = torch.randn(1, 3, 240, 240)
+        x = torch.randn(1, 3, 251, 211)
         y = self.crossformer(x)
         print(x.shape, y.shape)
 

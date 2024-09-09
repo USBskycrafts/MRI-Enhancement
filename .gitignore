@@ -13,5 +13,5 @@ result
 .vscode
 model/Proposed
 model/v4.5
-model/sample
+sample
 tensorboard
