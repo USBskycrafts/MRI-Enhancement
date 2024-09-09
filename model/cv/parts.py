@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from model.unet.unet_parts import *
 from torch.nn.modules.transformer import TransformerEncoderLayer, TransformerDecoderLayer
+from .loss import *
 
 
 class EncoderAttentionLayer(nn.Module):
@@ -92,19 +93,6 @@ class Decoder(nn.Module):
         return logits
 
 
-class ElementLoss(nn.Module):
-    def __init__(self):
-        super(ElementLoss, self).__init__()
-        # 6 main elements in the head
-        self.elements = nn.parameter.Parameter(torch.randn(6))
-
-    def forward(self, x):
-        loss = 1
-        for e in self.elements:
-            loss *= (x - e)
-        return torch.linalg.norm(loss)
-
-
 class Decomposer(nn.Module):
     def __init__(self, input_channels, output_channels, feature_channels):
         super(Decomposer, self).__init__()
@@ -116,7 +104,7 @@ class Decomposer(nn.Module):
         self.map_decoder = Decoder(output_channels)
         self.proton_decoder = Decoder(output_channels)
 
-        self.reconstruct_loss = nn.L1Loss()
+        self.reconstruct_loss = ReconstructionLoss()
         self.formalized_loss = nn.ModuleList(
             ElementLoss() for _ in range(2)
         )
@@ -169,7 +157,7 @@ class Enhancer(nn.Module):
             Decoder(output_channels),
         )
 
-        self.loss = nn.L1Loss()
+        self.loss = ReconstructionLoss()
 
         self.formalized_loss = ElementLoss()
 
@@ -190,26 +178,6 @@ class Enhancer(nn.Module):
         return {"loss": loss,
                 "map": enhanced_map,
                 "generated": reconstructed}
-
-
-class GramLoss(nn.Module):
-    def __init__(self):
-        super(GramLoss, self).__init__()
-        self.mse_criterion = nn.MSELoss()
-
-    def forward(self, features, targets, weights=None):
-        if weights is None:
-            weights = [1/len(features)] * len(features)
-
-        gram_loss = 0
-        for f, t, w in zip(features, targets, weights):
-            gram_loss += self.mse_criterion(self.gram(f), self.gram(t)) * w
-        return gram_loss
-
-    def gram(self, x):
-        b, c, h, w = x.size()
-        g = torch.bmm(x.view(b, c, h*w), x.view(b, c, h*w).transpose(1, 2))
-        return g.div(h*w)
 
 
 class Classifier(nn.Module):
@@ -287,10 +255,10 @@ class Generator(nn.Module):
         self.decomposer = Decomposer(
             input_channels, output_channels, input_channels * 32)
         self.enhancer = Enhancer(input_channels, output_channels)
-        self.NH_loss = nn.L1Loss()
+        self.NH_loss = ReconstructionLoss()
         self.cross_entropy = nn.CrossEntropyLoss()
         self.discriminator = discriminator
-        self.T1CE_loss = nn.L1Loss()
+        self.T1CE_loss = ReconstructionLoss()
 
     def forward(self, data, mode="train"):
         t1_weighted = data["T1"]
