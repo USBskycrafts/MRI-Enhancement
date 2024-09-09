@@ -12,6 +12,7 @@ def splitter(f):
 
 
 def timer(f):
+    @functools.wraps(f)
     def wrapper(*args, **kwargs):
         start = time.time()
         f(*args, **kwargs)
