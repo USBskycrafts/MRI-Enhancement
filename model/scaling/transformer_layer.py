@@ -47,22 +47,22 @@ class TransformerLayer(nn.Module):
         y_diff = (x.shape[3] + self.group -
                   1) // self.group * self.group - x.shape[3]
         assert x_diff >= 0 and y_diff >= 0, "the image should be padded to the multiple of group"
-        padding_size = (
+        self.padding_size = (
             y_diff // 2,
             y_diff // 2 + (1 if y_diff % 2 == 1 else 0),
             x_diff // 2,
             x_diff // 2 + (1 if x_diff % 2 == 1 else 0),
         )
-        x = F.pad(x, padding_size, mode='reflect')
+        x = F.pad(x, self.padding_size, mode='reflect')
         assert x.shape[2] % self.group == 0, f"{x.shape}"
         assert x.shape[3] % self.group == 0, f"{x.shape}"
         return x
 
     def forward(self, x):
-        x = self.padding(x)
-        bs, c, h, w = x.shape
+        x_ = self.padding(x)
+        bs, c, h, w = x_.shape
         if self.attention_type == "local":
-            groups = F.unfold(x, kernel_size=(self.group, self.group),
+            groups = F.unfold(x_, kernel_size=(self.group, self.group),
                               stride=(self.group, self.group))
             groups = groups.reshape(bs, c, self.group * self.group, -1)
             groups = groups.permute(0, 3, 2, 1)
@@ -75,12 +75,10 @@ class TransformerLayer(nn.Module):
             y = F.fold(groups, output_size=(h, w),
                        kernel_size=(self.group, self.group),
                        stride=(self.group, self.group))
-            assert y.shape == x.shape
-            return y
         elif self.attention_type == "long":
             stride = (h // self.group, w // self.group)
             # project the groups
-            groups = F.unfold(x, kernel_size=stride,
+            groups = F.unfold(x_, kernel_size=stride,
                               stride=stride)
             groups = groups.reshape(
                 bs, c, stride[0] * stride[1], self.group * self.group)
@@ -95,7 +93,11 @@ class TransformerLayer(nn.Module):
                                     self.group * self.group)
             y = F.fold(groups, output_size=(h, w), kernel_size=stride,
                        stride=stride)
-            assert y.shape == x.shape
-            return y
         else:
             raise NotImplementedError("please check the attention type")
+        # remove the padding
+        h, w = x_.shape[2:]
+        left, right, top, bottom = self.padding_size
+        y = y[:, :, top:h-bottom, left:w-right]
+        assert y.shape == x.shape, f"y's shape: {y.shape}, x's shape: {x.shape}, padding size: {self.padding_size}"
+        return y
