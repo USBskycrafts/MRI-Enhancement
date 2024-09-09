@@ -54,13 +54,20 @@ class TestTransformerLayer(unittest.TestCase):
                 return super(MockedTransformer, self).forward(x)
 
         input = torch.arange(
-            0, 2 * 2 * 6 * 6, dtype=torch.float32).reshape(2, 2, 6, 6)
+            0, 2 * 2 * 17 * 23, dtype=torch.float32).reshape(2, 2, 17, 23)
         encoder = MockedTransformer(1, 3, 'local')
         output = encoder(input)
-        assert input.equal(output)
+        assert input.equal(
+            output), f'output is not equal to input: {output}, {input}'
         encoder = MockedTransformer(2, 3, 'long')
         output = encoder(input)
-        assert input.equal(output)
+        assert input.equal(
+            output), f'output is not equal to input: {output}, {input}'
+        input = torch.arange(
+            0, 2 * 2 * 15 * 15, dtype=torch.float32).reshape(2, 2, 15, 15)
+        output = encoder(input)
+        assert input.equal(
+            output), f'output is not equal to input: {output}, {input}'
 
 
 if __name__ == '__main__':
