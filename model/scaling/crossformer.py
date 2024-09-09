@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
-from .transformer_layer import TransformerPack
+from .crossformer_layer import CrossformerPack
 from .cross_embedding import CrossScaleEmbedding
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 
 
 class CrossScaleParams:
@@ -22,7 +22,7 @@ class CrossScaleParams:
         return getattr(self, key)
 
 
-class TransformerParams:
+class CrossformerParams:
     def __init__(self, input_dim: int,
                  group: int,
                  n_layer: int):
@@ -37,16 +37,16 @@ class TransformerParams:
         return getattr(self, key)
 
 
-class TransformerUnit(nn.Module):
-    def __init__(self, cross_scale_params: CrossScaleParams, transformer_params: TransformerParams):
-        super(TransformerUnit, self).__init__()
+class CrossformerUnit(nn.Module):
+    def __init__(self, cross_scale_params: CrossScaleParams, transformer_params: CrossformerParams):
+        super(CrossformerUnit, self).__init__()
         self.encoder_embedding = CrossScaleEmbedding(
             **dict(cross_scale_params))
-        self.encoder_layers = TransformerPack(**dict(transformer_params))
+        self.encoder_layers = CrossformerPack(**dict(transformer_params))
         self.decoder_embedding = CrossScaleEmbedding(
             **cross_scale_params, reversed=True)
         transformer_params.input_dim = cross_scale_params.input_dim
-        self.decoder_layers = TransformerPack(**dict(transformer_params))
+        self.decoder_layers = CrossformerPack(**dict(transformer_params))
 
     def forward(self, x, next: List[nn.Module]):
         h = self.encoder_embedding(x)
@@ -61,3 +61,31 @@ class TransformerUnit(nn.Module):
         h = self.decoder_embedding(h_next, h, x.shape)
         y = self.decoder_layers(h)
         return y
+
+
+class CrossformerPairBuilder:
+    def __init__(self, cross_scale_params: CrossScaleParams, transformer_params: CrossformerParams):
+        self.encoder = nn.Sequential(
+            CrossScaleEmbedding(
+                **dict(cross_scale_params)),
+            CrossformerPack(**dict(transformer_params))
+        )
+        transformer_params.input_dim = cross_scale_params.input_dim
+
+        class SequentialAdapter(nn.Module):
+            def __init__(self):
+                super(SequentialAdapter, self).__init__()
+                self.embedding = CrossScaleEmbedding(
+                    **cross_scale_params, reversed=True)
+
+            def forward(self, input):
+                x, h, shape = input
+                return self.embedding(x, h, shape)
+
+        self.decoder = nn.Sequential(
+            SequentialAdapter(),
+            CrossformerPack(**dict(transformer_params))
+        )
+
+    def build(self) -> Tuple[nn.Module, nn.Module]:
+        return self.encoder, self.decoder

@@ -3,18 +3,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class TransformerPack(nn.Module):
+class CrossformerPack(nn.Module):
     def __init__(self, input_dim: int, group=3, n_layer=3):
-        super(TransformerPack, self).__init__()
+        super(CrossformerPack, self).__init__()
         self.input_dim = input_dim
         self.group = group
         self.layer_num = n_layer
 
         layers = []
         for _ in range(n_layer):
-            layers.append(TransformerLayer(
+            layers.append(CrossformerLayer(
                 input_dim, group=group, attention_type="local"))
-            layers.append(TransformerLayer(
+            layers.append(CrossformerLayer(
                 input_dim, group=group, attention_type="long"))
         self.layers = nn.Sequential(*layers)
 
@@ -22,9 +22,9 @@ class TransformerPack(nn.Module):
         return self.layers(x)
 
 
-class TransformerLayer(nn.Module):
+class CrossformerLayer(nn.Module):
     def __init__(self, input_dim: int, group=3, attention_type="long"):
-        super(TransformerLayer, self).__init__()
+        super(CrossformerLayer, self).__init__()
         self.input_dim = input_dim
         self.group = group
         self.attention_type = attention_type

@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from model.unet.unet_parts import *
 from torch.nn.modules.transformer import TransformerEncoderLayer, TransformerDecoderLayer
-from .loss import *
+from .loss import GramLoss, ReconstructionLoss, ElementLoss
 
 
 class EncoderAttentionLayer(nn.Module):

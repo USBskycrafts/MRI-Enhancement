@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import unittest
-from model.scaling.component import TransformerUnit, CrossScaleParams, TransformerParams
+from model.scaling.crossformer import CrossformerUnit, CrossScaleParams, CrossformerParams
 from .utils import splitter, timer
 
 
@@ -32,22 +32,22 @@ class Crossformer(nn.Module):
                 stride=2),
         ]
         self.transformer_params = [
-            TransformerParams(
+            CrossformerParams(
                 input_dim=64,
                 group=7,
                 n_layer=1
             ),
-            TransformerParams(
+            CrossformerParams(
                 input_dim=128,
                 group=7,
                 n_layer=1
             ),
-            TransformerParams(
+            CrossformerParams(
                 input_dim=256,
                 group=7,
                 n_layer=8
             ),
-            TransformerParams(
+            CrossformerParams(
                 input_dim=512,
                 group=7,
                 n_layer=6
@@ -57,7 +57,7 @@ class Crossformer(nn.Module):
         self.transformer_units = nn.ModuleList([])
         for cross_param, transformer_param in zip(self.cross_params, self.transformer_params):
             self.transformer_units.append(
-                TransformerUnit(cross_param, transformer_param))
+                CrossformerUnit(cross_param, transformer_param))
 
     def forward(self, x):
         first, rest = self.transformer_units[0], list(
