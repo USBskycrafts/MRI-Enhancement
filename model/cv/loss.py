@@ -41,16 +41,18 @@ class SobelLoss(nn.Module):
         super(SobelLoss, self).__init__()
         self.mse_criterion = nn.MSELoss()
 
-    def sobel(self, x):
+    def sobel_x(self, x):
         sobel_kernel = torch.tensor(
             [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=torch.float32, device=x.device).view(1, 1, 3, 3)
-
         return F.conv2d(x, sobel_kernel, padding=1)
 
-    def forward(self, x, y):
-        x_sobel = self.sobel(x)
-        y_sobel = self.sobel(y)
-        return self.mse_criterion(x_sobel, y_sobel)
+    def sobel_y(self, x):
+        sobel_kernel = torch.tensor(
+            [[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=torch.float32, device=x.device).view(1, 1, 3, 3)
+        return F.conv2d(x, sobel_kernel, padding=1)
+
+    def forward(self, pred, target):
+        return self.mse_criterion(self.sobel_x(pred), self.sobel_x(target)) + self.mse_criterion(self.sobel_y(pred), self.sobel_y(target))
 
 
 class ReconstructionLoss(nn.Module):
