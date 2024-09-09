@@ -16,9 +16,8 @@ class ProposedModel(nn.Module):
         self.output_dim = config.getint("model", "output_dim")
         # writer = params["writer"]
 
-        self.discriminator = Discriminator(self.output_dim)
         self.generator = Generator(
-            self.input_dim, self.output_dim, self.discriminator)
+            self.input_dim, self.output_dim)
 
     def forward(self, data, config, gpu_list, acc_result, mode, local=None):
         t1, t2, t1ce = data["t1"], data["t2"], data["t1ce"]
@@ -30,12 +29,6 @@ class ProposedModel(nn.Module):
         }, mode).values()
         loss += g_loss
 
-        d_loss, fake_label, real_label = self.discriminator({
-            "fake": fake,
-            "real": t1ce
-        }).values()
-        loss += d_loss
-
         acc_result = accumulate_cv_data({
             "output": fake.detach(),
             "gt": t1ce.detach(),
@@ -45,8 +38,6 @@ class ProposedModel(nn.Module):
             writer: SummaryWriter = local.writer
             if mode == "train":
                 global_step = local.global_step
-                writer.add_scalar("loss/discriminator",
-                                  float(d_loss), global_step=global_step)
                 writer.add_scalar("loss/generator", float(g_loss),
                                   global_step=global_step)
                 writer.add_scalar(f"{mode}/psnr", acc_result["PSNR"][-1],

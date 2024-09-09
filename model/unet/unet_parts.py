@@ -16,12 +16,11 @@ class DoubleConv(nn.Module):
             nn.Conv2d(in_channels, mid_channels,
                       kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(mid_channels),
-            nn.LeakyReLU(),
+            nn.ReLU(inplace=True),
             nn.Conv2d(mid_channels, out_channels,
                       kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(out_channels),
-            nn.LeakyReLU(),
-            nn.Dropout(0.3)
+            nn.ReLU(inplace=True),
         )
 
     def forward(self, x):
@@ -57,9 +56,6 @@ class Up(nn.Module):
             self.up = nn.ConvTranspose2d(
                 in_channels, in_channels // 2, kernel_size=2, stride=2)
             self.conv = DoubleConv(in_channels, out_channels)
-        self.conv = nn.Sequential(
-            self.conv,
-        )
 
     def forward(self, x1, x2):
         x1 = self.up(x1)

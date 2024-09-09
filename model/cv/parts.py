@@ -2,37 +2,7 @@ import logging
 import torch
 import torch.nn as nn
 from model.unet.unet_parts import *
-from torch.nn.modules.transformer import TransformerEncoderLayer, TransformerDecoderLayer
 from .loss import GramLoss, ReconstructionLoss, ElementLoss
-
-
-class EncoderAttentionLayer(nn.Module):
-    def __init__(self, input_channels):
-        super(EncoderAttentionLayer, self).__init__()
-        self.input_dim = input_channels
-        assert self.input_dim % 8 == 0, "input dimension must be divisible by 8"
-        self.tokenizer = nn.Sequential(
-            nn.AdaptiveAvgPool2d((16, 16)),
-            nn.Flatten(start_dim=2, end_dim=-1),
-            nn.Linear(16 * 16, 32),
-        )
-        self.attention_layer = TransformerEncoderLayer(
-            d_model=32, nhead=8)
-        self.pooling = nn.AdaptiveAvgPool1d(1)
-
-    def forward(self, x):
-        token = self.tokenizer(x)
-        token = self.attention_layer(token)
-        return self.pooling(token).unsqueeze(-1)
-
-
-class DecoderAttentionLayer(nn.Module):
-    def __init__(self, input_channels):
-        super(DecoderAttentionLayer, self).__init__()
-        self.input_dim = input_channels
-
-    def forward(self, x):
-        pass
 
 
 class Encoder(nn.Module):
@@ -42,33 +12,25 @@ class Encoder(nn.Module):
 
         self.inc = DoubleConv(self.input_dim, self.input_dim * 16)
         self.down1 = Down(self.input_dim * 16, self.input_dim * 32)
-        self.attention1 = EncoderAttentionLayer(self.input_dim * 32)
         self.down2 = Down(self.input_dim * 32, self.input_dim * 64)
-        self.attention2 = EncoderAttentionLayer(self.input_dim * 64)
         self.down3 = Down(self.input_dim * 64, self.input_dim * 128)
-        self.attention3 = EncoderAttentionLayer(self.input_dim * 128)
-        # self.down4 = Down(self.input_dim * 128, self.input_dim * 256)
-        # self.attention4 = EncoderAttentionLayer(self.input_dim * 256)
+        self.down4 = Down(self.input_dim * 128, self.input_dim * 256)
         self.logger = logging.getLogger("Encoder")
 
     def forward(self, x):
         # data must be a clip of "origin" field
         x1 = self.inc(x)
         x2 = self.down1(x1)
-        x2 = x2 * self.attention1(x2)
         x3 = self.down2(x2)
-        x3 = x3 * self.attention2(x3)
         x4 = self.down3(x3)
-        x4 = x4 * self.attention3(x4)
-        # x5 = self.down4(x4)  # shape of x5 is [batch_size, 1024, *, *]
-        # x5 = x5 * self.attention4(x5)
+        x5 = self.down4(x4)  # shape of x5 is [batch_size, 1024, *, *]
 
         return {
             "x1": x1,
             "x2": x2,
             "x3": x3,
             "x4": x4,
-            # "x5": x5,
+            "x5": x5,
         }
 
 
@@ -137,10 +99,6 @@ class Decomposer(nn.Module):
             raise ValueError(f"Unknown category: {category}")
         # print(reconstructed.shape, target.shape, self.reconstruct_loss)
         loss = self.reconstruct_loss(reconstructed, target)
-        # loss += 0.001 * (
-        #     self.formalized_loss[0](proton) +
-        #     self.formalized_loss[1](mapping)
-        # ) / 2
         return {"loss": loss,
                 "map": mapping,
                 "proton": proton}
@@ -174,90 +132,18 @@ class Enhancer(nn.Module):
         enhanced_map = self.enhancer(map)
         reconstructed = proton * (1 - torch.exp(-enhanced_map))
         loss = self.loss(target, reconstructed)
-        # loss += self.formalized_loss(enhanced_map) * 0.001
         return {"loss": loss,
                 "map": enhanced_map,
                 "generated": reconstructed}
 
 
-class Classifier(nn.Module):
-    def __init__(self, input_channels, n_classes):
-        super(Classifier, self).__init__()
-        self.input_channels = input_channels
-        self.n_classes = n_classes
-
-        self.encoder = Encoder(input_channels)
-        self.classifier = nn.Sequential(
-            nn.AdaptiveAvgPool2d((1, 1)),
-            nn.Flatten(),
-            nn.Linear(input_channels * 128, n_classes),
-            nn.Softmax(dim=1)
-        )
-
-        self.cross_entropy = nn.CrossEntropyLoss()
-        self.gram_loss = GramLoss()
-
-    def forward(self, data):
-        """classify the image into one of the classes
-
-        Args:
-            data (Dict[str, Tensor]): should contain the following fields:
-                "fake": the fake image
-                "real": the real image
-
-
-
-        Returns:
-            dict: the loss of the classifier
-        """
-        fake = data["fake"]
-        real = data["real"]
-
-        f_features = list(self.encoder(fake).values())
-        r_features = list(self.encoder(real).values())
-
-        fake_label = self.classifier(f_features[-1])
-        real_label = self.classifier(r_features[-1])
-
-        # the cross entropy loss
-        loss = (self.cross_entropy(fake_label,
-                                   torch.zeros(fake_label.shape[0],
-                                               dtype=torch.long,
-                                               device=fake_label.device))
-                + self.cross_entropy(real_label,
-                                     torch.ones(real_label.shape[0],
-                                                dtype=torch.long,
-                                                device=real_label.device))) / 2
-
-        # the gram loss
-        loss += self.gram_loss(f_features, r_features)
-
-        return {"loss": loss,
-                "fake_label": fake_label,
-                "real_label": real_label}
-
-
-class Discriminator(nn.Module):
-    def __init__(self, input_channels):
-        super(Discriminator, self).__init__()
-        self.input_channels = input_channels
-        self.classifier = Classifier(input_channels, 2)
-
-    def forward(self, data):
-        fake = data["fake"].detach()
-        real = data["real"].detach()
-        return self.classifier({"fake": fake, "real": real})
-
-
 class Generator(nn.Module):
-    def __init__(self, input_channels, output_channels, discriminator):
+    def __init__(self, input_channels, output_channels):
         super(Generator, self).__init__()
         self.decomposer = Decomposer(
             input_channels, output_channels, input_channels * 32)
         self.enhancer = Enhancer(input_channels, output_channels)
         self.NH_loss = ReconstructionLoss()
-        self.cross_entropy = nn.CrossEntropyLoss()
-        self.discriminator = discriminator
         self.T1CE_loss = ReconstructionLoss()
 
     def forward(self, data, mode="train"):
@@ -298,13 +184,6 @@ class Generator(nn.Module):
 
         if mode == "train":
             loss += self.T1CE_loss(T1CE_enhanced, T1CE_descomposed)
-
-        _loss, fake_label, real_label = self.discriminator({
-            "fake": enhanced,
-            "real": t1_enhanced
-        }).values()
-        loss += self.cross_entropy(fake_label, torch.ones(
-            enhanced.shape[0], dtype=torch.long, device=enhanced.device))
 
         return {
             "loss": loss,
