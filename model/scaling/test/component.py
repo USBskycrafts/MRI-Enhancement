@@ -82,6 +82,16 @@ class TestCrossformer(unittest.TestCase):
         y = self.crossformer(x)
         print(x.shape, y.shape)
 
+    @splitter
+    @timer
+    def test_backward(self):
+        self.crossformer = Crossformer()
+        x = torch.randn(1, 3, 240, 240)
+        y = self.crossformer(x)
+        print(x.shape, y.shape)
+        loss = torch.sum(y - x)
+        loss.backward()
+
 
 if __name__ == '__main__':
     unittest.main()
