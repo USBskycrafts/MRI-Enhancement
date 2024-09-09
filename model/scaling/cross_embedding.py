@@ -35,10 +35,9 @@ class CrossScaleEmbedding(nn.Module):
         token_dim = []
         for i in range(1, len(kernel_size)):
             token_dim.append(output_dim // (2**i))
-            if i == len(kernel_size) - 1:
-                # the largest token dim should equals to the
-                # secondary largest token dim
-                token_dim.append(output_dim // (2**i))
+            # the largest token dim should equals to the
+            # secondary largest token dim
+        token_dim.append(output_dim // (2**(len(kernel_size) - 1)))
         return token_dim
 
     def padding_size(self, kernel_size, stride) -> int:

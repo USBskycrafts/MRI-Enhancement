@@ -20,6 +20,16 @@ class Crossformer(nn.Module):
                 output_dim=128,
                 kernel_size=[2, 4],
                 stride=2),
+            CrossScaleParams(
+                input_dim=128,
+                output_dim=256,
+                kernel_size=[2, 4],
+                stride=2),
+            CrossScaleParams(
+                input_dim=256,
+                output_dim=512,
+                kernel_size=[2, 4],
+                stride=2),
         ]
         self.transformer_params = [
             TransformerParams(
@@ -32,6 +42,16 @@ class Crossformer(nn.Module):
                 group=7,
                 n_layer=1
             ),
+            TransformerParams(
+                input_dim=256,
+                group=7,
+                n_layer=8
+            ),
+            TransformerParams(
+                input_dim=512,
+                group=7,
+                n_layer=6
+            )
         ]
 
         self.transformer_units = nn.ModuleList([])
