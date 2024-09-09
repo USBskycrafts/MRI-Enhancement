@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import unittest
+from thop import profile
 from model.scaling.crossformer import CrossformerUnit, CrossScaleParams, CrossformerParams
 from .utils import splitter, timer
 
@@ -11,7 +12,7 @@ class Crossformer(nn.Module):
 
         self.cross_params = [
             CrossScaleParams(
-                input_dim=3,
+                input_dim=1,
                 output_dim=64,
                 kernel_size=[4, 8, 16, 32],
                 stride=4),
@@ -70,7 +71,7 @@ class TestCrossformer(unittest.TestCase):
     @timer
     def test_regular_shape(self):
         self.crossformer = Crossformer()
-        x = torch.randn(1, 3, 224, 224)
+        x = torch.randn(1, 1, 224, 224)
         y = self.crossformer(x)
         print(x.shape, y.shape)
 
@@ -78,7 +79,7 @@ class TestCrossformer(unittest.TestCase):
     @timer
     def test_irregular_shape(self):
         self.crossformer = Crossformer()
-        x = torch.randn(1, 3, 251, 211)
+        x = torch.randn(1, 1, 251, 211)
         y = self.crossformer(x)
         print(x.shape, y.shape)
 
@@ -86,11 +87,20 @@ class TestCrossformer(unittest.TestCase):
     @timer
     def test_backward(self):
         self.crossformer = Crossformer()
-        x = torch.randn(1, 3, 240, 240)
+        x = torch.randn(1, 1, 240, 240)
         y = self.crossformer(x)
         print(x.shape, y.shape)
         loss = torch.sum(y - x)
         loss.backward()
+
+    @splitter
+    @timer
+    def test_model_size(self):
+        self.crossformer = Crossformer()
+        x = torch.randn(1, 1, 240, 240)
+        flops, *params = profile(self.crossformer, inputs=(x,))
+        if (len(params) == 1):
+            print(f"{flops/1e9} GFLOPs, {params[0]/1e6} MParams")
 
 
 if __name__ == '__main__':

@@ -180,13 +180,14 @@ class Generator(nn.Module):
             symbosis_loss = self.T1CE_loss(
                 T1CE_enhanced, T1CE_descomposed) * 0.1
             loss += symbosis_loss
-            writer = local.writer
-            global_step = local.global_step
-            writer.add_scalar("loss/t1", t1_loss, global_step)
-            writer.add_scalar("loss/t2", t2_loss, global_step)
-            writer.add_scalar("loss/t1ce", t1ce_loss, global_step)
-            writer.add_scalar("loss/enhanced", enhanced_loss, global_step)
-            writer.add_scalar("loss/symbosis", symbosis_loss, global_step)
+            if local is not None:
+                writer = local.writer
+                global_step = local.global_step
+                writer.add_scalar("loss/t1", t1_loss, global_step)
+                writer.add_scalar("loss/t2", t2_loss, global_step)
+                writer.add_scalar("loss/t1ce", t1ce_loss, global_step)
+                writer.add_scalar("loss/enhanced", enhanced_loss, global_step)
+                writer.add_scalar("loss/symbosis", symbosis_loss, global_step)
 
         return {
             "loss": loss,
