@@ -43,7 +43,8 @@ class SobelLoss(nn.Module):
 
     def sobel(self, x):
         sobel_kernel = torch.tensor(
-            [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=torch.float32).view(1, 1, 3, 3)
+            [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=torch.float32, device=x.device).view(1, 1, 3, 3)
+
         return F.conv2d(x, sobel_kernel, padding=1)
 
     def forward(self, x, y):

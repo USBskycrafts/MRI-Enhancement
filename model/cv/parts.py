@@ -38,7 +38,7 @@ class Decoder(nn.Module):
     def __init__(self, output_channels):
         super(Decoder, self).__init__()
         self.output_dim = output_channels
-        # self.up1 = Up(self.output_dim * 256, self.output_dim * 128)
+        self.up1 = Up(self.output_dim * 256, self.output_dim * 128)
         self.up2 = Up(self.output_dim * 128, self.output_dim * 64)
         self.up3 = Up(self.output_dim * 64, self.output_dim * 32)
         self.up4 = Up(self.output_dim * 32, self.output_dim * 16)
@@ -46,8 +46,8 @@ class Decoder(nn.Module):
 
     def forward(self, x):
         # data must be the output of encoder
-        x1, x2, x3, x4 = x.values()
-        # x = self.up1(x5, x4)
+        x1, x2, x3, x4, x5 = x.values()
+        x = self.up1(x5, x4)
         x = self.up2(x4, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
