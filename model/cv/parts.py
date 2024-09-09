@@ -65,11 +65,7 @@ class Decomposer(nn.Module):
         self.encoder = Encoder(input_channels)
         self.map_decoder = Decoder(output_channels)
         self.proton_decoder = Decoder(output_channels)
-
         self.reconstruct_loss = ReconstructionLoss()
-        self.formalized_loss = nn.ModuleList(
-            ElementLoss() for _ in range(2)
-        )
     from typing import Dict
 
     def forward(self, data: Dict[str, torch.Tensor]):
@@ -117,8 +113,6 @@ class Enhancer(nn.Module):
 
         self.loss = ReconstructionLoss()
 
-        self.formalized_loss = ElementLoss()
-
     def forward(self, data):
         """an enhancement net to enhance the T1 map
 
@@ -146,44 +140,53 @@ class Generator(nn.Module):
         self.NH_loss = ReconstructionLoss()
         self.T1CE_loss = ReconstructionLoss()
 
-    def forward(self, data, mode="train"):
+    def forward(self, data, local, mode="train"):
         t1_weighted = data["T1"]
         t2_weighted = data["T2"]
         t1_enhanced = data["T1CE"]
         loss = 0
-        _loss, T1, N1 = self.decomposer({
+        t1_loss, T1, N1 = self.decomposer({
             "image": t1_weighted,
             "target": t1_weighted,
             "type": "T1"
         }).values()
-        loss += _loss
+        loss += t1_loss
 
         if mode == "train":
-            _loss, T2, N2 = self.decomposer({
+            t2_loss, T2, N2 = self.decomposer({
                 "image": t2_weighted,
                 "target": t2_weighted,
                 "type": "T2"
             }).values()
-            loss += _loss
+            loss += t2_loss
             loss += self.NH_loss(N1, N2)
 
-            _loss, T1CE_descomposed, N1CE = self.decomposer({
+            t1ce_loss, T1CE_descomposed, N1CE = self.decomposer({
                 "image": t1_enhanced,
                 "target": t1_enhanced,
                 "type": "T1"
             }).values()
-            loss += _loss
+            loss += t1ce_loss
             loss += self.NH_loss(N1, N1CE)
 
-        _loss, T1CE_enhanced, enhanced = self.enhancer({
+        enhanced_loss, T1CE_enhanced, enhanced = self.enhancer({
             "map": T1,
             "proton": N1,
             "target": t1_enhanced
         }).values()
-        loss += _loss
+        loss += enhanced_loss
 
         if mode == "train":
-            loss += self.T1CE_loss(T1CE_enhanced, T1CE_descomposed)
+            symbosis_loss = self.T1CE_loss(
+                T1CE_enhanced, T1CE_descomposed) * 0.1
+            loss += symbosis_loss
+            writer = local.writer
+            global_step = local.global_step
+            writer.add_scalar("loss/t1", t1_loss, global_step)
+            writer.add_scalar("loss/t2", t2_loss, global_step)
+            writer.add_scalar("loss/t1ce", t1ce_loss, global_step)
+            writer.add_scalar("loss/enhanced", enhanced_loss, global_step)
+            writer.add_scalar("loss/symbosis", symbosis_loss, global_step)
 
         return {
             "loss": loss,

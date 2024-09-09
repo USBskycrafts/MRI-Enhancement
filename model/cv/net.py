@@ -26,7 +26,7 @@ class ProposedModel(nn.Module):
             "T1": t1,
             "T2": t2,
             "T1CE": t1ce
-        }, mode).values()
+        }, local, mode).values()
         loss += g_loss
 
         acc_result = accumulate_cv_data({
