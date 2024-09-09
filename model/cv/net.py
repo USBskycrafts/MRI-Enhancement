@@ -63,7 +63,7 @@ class ProposedModel(nn.Module):
         return {
             "loss": loss,
             "acc_result": acc_result,
-            "generated": list(torch.split(fake.squeeze().cpu().detach(), 1, dim=0)),
+            "generated": [fake.detach()],
             "output": [(torch.min(fake).detach().item(),
                         torch.max(fake).detach().item(),
                         torch.mean(fake).detach().item())]

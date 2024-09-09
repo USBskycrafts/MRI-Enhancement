@@ -36,7 +36,7 @@ def test(parameters: Dict, config, gpu_list):
                 else:
                     data[key] = Variable(data[key])
         results = model(data, config, gpu_list, acc_result, "test")
-        result = result + results["output"]
+        result = result + results["generated"]
         cnt += 1
 
         if step % output_time == 0:
