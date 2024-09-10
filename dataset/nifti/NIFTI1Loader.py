@@ -71,9 +71,7 @@ class NIFTI1Loader(Dataset):
         return data_list
 
     def size_process(self, data: torch.Tensor, config, mode, *args, **params) -> torch.Tensor:
-        if mode == 'train':
+        if mode == 'train' or mode == 'valid':
             return data[:, 50:200, 30:220]
-        elif mode == 'valid':
-            return data[:, 120-32:120+32, 120-32:120+32]
         else:
             return data

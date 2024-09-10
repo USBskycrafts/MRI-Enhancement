@@ -10,11 +10,11 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.input_dim = input_channels
 
-        self.inc = DoubleConv(self.input_dim, 32)
-        self.down1 = Down(32, 64)
-        self.down2 = Down(64, 128)
-        self.down3 = Down(128, 256)
-        self.down4 = Down(256, 512)
+        self.inc = DoubleConv(self.input_dim, 64)
+        self.down1 = Down(64, 128)
+        self.down2 = Down(128, 256)
+        self.down3 = Down(256, 512)
+        self.down4 = Down(512, 1024)
         self.logger = logging.getLogger("Encoder")
 
     def forward(self, x):
@@ -38,11 +38,11 @@ class Decoder(nn.Module):
     def __init__(self, output_channels):
         super(Decoder, self).__init__()
         self.output_dim = output_channels
-        self.up1 = Up(512, 256)
-        self.up2 = Up(256, 128)
-        self.up3 = Up(128, 64)
-        self.up4 = Up(64, 32)
-        self.outc = OutConv(32, self.output_dim)
+        self.up1 = Up(1024, 512)
+        self.up2 = Up(512, 256)
+        self.up3 = Up(256, 128)
+        self.up4 = Up(128, 64)
+        self.outc = OutConv(64, self.output_dim)
 
     def forward(self, x):
         # data must be the output of encoder
@@ -63,8 +63,7 @@ class Decomposer(nn.Module):
         self.feature_channels = feature_channels
 
         self.encoder = Encoder(input_channels)
-        self.map_decoder = Decoder(output_channels)
-        self.proton_decoder = Decoder(output_channels)
+        self.decoder = Decoder(output_channels)
         self.reconstruct_loss = ReconstructionLoss()
     from typing import Dict
 
@@ -85,8 +84,7 @@ class Decomposer(nn.Module):
         target = data["target"]
         category = data["type"]
         features = self.encoder(x)
-        mapping = self.map_decoder(features)
-        proton = self.proton_decoder(features)
+        proton, mapping = self.decoder(features).split(1, dim=1)
         if category == "T1":
             reconstructed = proton * (1 - torch.exp(-mapping))
         elif category == "T2":
@@ -135,7 +133,7 @@ class Generator(nn.Module):
     def __init__(self, input_channels, output_channels):
         super(Generator, self).__init__()
         self.decomposer = Decomposer(
-            input_channels, output_channels, input_channels * 32)
+            input_channels, output_channels * 2, input_channels * 32)
         self.enhancer = Enhancer(input_channels, output_channels)
         self.NH_loss = ReconstructionLoss()
         self.T1CE_loss = ReconstructionLoss()
@@ -145,12 +143,6 @@ class Generator(nn.Module):
         t2_weighted = data["T2"]
         t1_enhanced = data["T1CE"]
         loss = 0
-        t1_loss, T1, N1 = self.decomposer({
-            "image": t1_weighted,
-            "target": t1_weighted,
-            "type": "T1"
-        }).values()
-        loss += t1_loss
 
         if mode == "train":
             t2_loss, T2, N2 = self.decomposer({
@@ -159,7 +151,6 @@ class Generator(nn.Module):
                 "type": "T2"
             }).values()
             loss += t2_loss
-            loss += self.NH_loss(N1, N2)
 
             t1ce_loss, T1CE_descomposed, N1CE = self.decomposer({
                 "image": t1_enhanced,
@@ -167,7 +158,19 @@ class Generator(nn.Module):
                 "type": "T1"
             }).values()
             loss += t1ce_loss
-            loss += self.NH_loss(N1, N1CE)
+            loss += self.NH_loss(N2, N1CE)
+
+            del N1CE, T2
+
+        t1_loss, T1, N1 = self.decomposer({
+            "image": t1_weighted,
+            "target": t1_weighted,
+            "type": "T1"
+        }).values()
+        loss += t1_loss
+        if mode == "train":
+            loss += self.NH_loss(N2, N1)
+            del N2
 
         enhanced_loss, T1CE_enhanced, enhanced = self.enhancer({
             "map": T1,
