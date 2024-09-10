@@ -39,7 +39,7 @@ class GramLoss(nn.Module):
 class SobelLoss(nn.Module):
     def __init__(self):
         super(SobelLoss, self).__init__()
-        self.mse_criterion = nn.MSELoss()
+        self.l1_criterion = nn.L1Loss()
 
     def sobel_x(self, x):
         sobel_kernel = torch.tensor(
@@ -52,7 +52,7 @@ class SobelLoss(nn.Module):
         return F.conv2d(x, sobel_kernel, padding=1)
 
     def forward(self, pred, target):
-        return self.mse_criterion(self.sobel_x(pred), self.sobel_x(target)) + self.mse_criterion(self.sobel_y(pred), self.sobel_y(target))
+        return self.l1_criterion(self.sobel_x(pred), self.sobel_x(target)) + self.l1_criterion(self.sobel_y(pred), self.sobel_y(target))
 
 
 class ReconstructionLoss(nn.Module):
@@ -62,4 +62,4 @@ class ReconstructionLoss(nn.Module):
         self.sobel_criterion = SobelLoss()
 
     def forward(self, x, y):
-        return self.l1_criterion(x, y) + self.sobel_criterion(x, y)
+        return self.l1_criterion(x, y) * 0.1 + self.sobel_criterion(x, y) * 0.8
