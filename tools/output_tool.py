@@ -1,5 +1,6 @@
 import json
 from re import I
+import numpy as np
 
 from .accuracy_tool import (
     gen_micro_macro_result,
@@ -27,8 +28,8 @@ def cv_output_function(data, config, *args, **params):
     x, y = data.values()
     k1, k2 = data.keys()
     return json.dumps({
-        "avg " + k1: "{:<5}".format(f"{sum(x) / len(x):<2.2f}"),
-        "min " + k1: "{:<5}".format(f"{min(x):<2.2f}"),
-        "avg " + k2: "{:<5}".format(f"{sum(y) / len(y):<2.2f}"),
-        "min " + k2: "{:<5}".format(f"{min(y):<2.2f}"),
-    }, sort_keys=True)
+        "avg " + k1: "{:<5}".format(f"{np.mean(x):<2.2f}"),
+        "var " + k1: "{:<5}".format(f"{np.var(x):<2.2f}"),
+        "avg " + k2: "{:<5}".format(f"{np.mean(y):<2.2f}"),
+        "var " + k2: "{:<5}".format(f"{np.var(y):<2.2f}"),
+    }, sort_keys=False)
