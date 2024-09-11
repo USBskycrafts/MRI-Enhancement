@@ -62,4 +62,4 @@ class ReconstructionLoss(nn.Module):
         self.sobel_criterion = SobelLoss()
 
     def forward(self, x, y):
-        return self.l1_criterion(x, y) * 0.1 + self.sobel_criterion(x, y) * 0.8
+        return self.l1_criterion(x, y) * 0.3 + self.sobel_criterion(x, y) * 0.7
