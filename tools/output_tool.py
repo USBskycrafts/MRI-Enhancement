@@ -29,7 +29,7 @@ def cv_output_function(data, config, *args, **params):
     k1, k2 = data.keys()
     return json.dumps({
         "avg " + k1: "{:<5}".format(f"{np.mean(x):<2.2f}"),
-        "var " + k1: "{:<5}".format(f"{np.var(x):<2.2f}"),
+        "std " + k1: "{:<5}".format(f"{np.var(x):<2.2f}"),
         "avg " + k2: "{:<5}".format(f"{np.mean(y):<2.2f}"),
-        "var " + k2: "{:<5}".format(f"{np.var(y):<2.2f}"),
+        "std " + k2: "{:<5}".format(f"{np.std(y, ddof=1):<2.2f}"),
     }, sort_keys=False)
