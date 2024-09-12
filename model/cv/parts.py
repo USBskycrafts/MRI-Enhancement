@@ -160,7 +160,7 @@ class Generator(nn.Module):
             loss += t1ce_loss
             loss += self.NH_loss(N2, N1CE)
 
-            del N1CE, T2
+            del T2
 
         t1_loss, T1, N1 = self.decomposer({
             "image": t1_weighted,
@@ -170,7 +170,8 @@ class Generator(nn.Module):
         loss += t1_loss
         if mode == "train":
             loss += self.NH_loss(N2, N1)
-            del N2
+            loss += self.NH_loss(N1CE, N1)
+            del N2, N1CE
 
         enhanced_loss, T1CE_enhanced, enhanced = self.enhancer({
             "map": T1,
@@ -181,7 +182,7 @@ class Generator(nn.Module):
 
         if mode == "train":
             symbosis_loss = self.T1CE_loss(
-                T1CE_enhanced, T1CE_descomposed) * 0.1
+                T1CE_enhanced, T1CE_descomposed) * 0.01
             loss += symbosis_loss
             if local is not None:
                 writer = local.writer
