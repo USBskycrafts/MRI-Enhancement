@@ -182,7 +182,7 @@ class Generator(nn.Module):
 
         if mode == "train":
             symbosis_loss = self.T1CE_loss(
-                T1CE_enhanced, T1CE_descomposed) * 0.1
+                T1CE_enhanced, T1CE_descomposed)
             loss += symbosis_loss
             if local is not None:
                 writer = local.writer
