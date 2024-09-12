@@ -51,7 +51,6 @@ def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode
     total_len = len(dataset)
     start_time = timer()
     output_info = ""
-
     output_time = config.getint("output", "output_time")
     step = -1
     if local:
@@ -81,6 +80,9 @@ def valid(model, dataset, epoch, writer, config, gpu_list, output_function, mode
         if step % output_time == 0:
             delta_t = timer() - start_time
             output_info = output_function(acc_result, config)
+            if epoch % 50 == 0:
+                renderer = ResultRenderer(config)
+                renderer.render_results(data, results["generated"], step, config)
             output_value(epoch, mode, "%d/%d" % (step + 1, total_len), "%s/%s" % (
                 gen_time_str(delta_t), gen_time_str(delta_t * (total_len - step - 1) / (step + 1))),
                 "%.3lf" % (total_loss / (step + 1)), output_info, '\r', config)

@@ -72,4 +72,4 @@ class ResultRenderer:
                            self.config, *args, lock=self.lock, render_path=self.render_path, **params)
         future = self.executor.submit(task, data, result)
         self.futures.append(future)
-        task(data, result)
+        
