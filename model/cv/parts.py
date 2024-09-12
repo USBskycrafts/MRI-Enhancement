@@ -160,7 +160,7 @@ class Generator(nn.Module):
             loss += t1ce_loss
             loss += self.NH_loss(N2, N1CE)
 
-            del N1CE, T2
+            del T2
 
         t1_loss, T1, N1 = self.decomposer({
             "image": t1_weighted,
@@ -169,6 +169,7 @@ class Generator(nn.Module):
         }).values()
         loss += t1_loss
         if mode == "train":
+            loss += self.NH_loss(N1CE, N1)
             loss += self.NH_loss(N2, N1)
             del N2
 
