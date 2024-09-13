@@ -54,7 +54,8 @@ class Up(nn.Module):
             self.conv = DoubleConv(in_channels, out_channels, in_channels // 2)
         else:
             self.up = nn.Sequential(
-                nn.Conv2d(in_channels, in_channels * 2, kernel_size=1),
+                nn.Conv2d(in_channels, in_channels *
+                          2, kernel_size=2, stride=2),
                 nn.PixelShuffle(2)
             )
             self.conv = DoubleConv(in_channels, out_channels)
