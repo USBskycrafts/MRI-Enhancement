@@ -1,6 +1,7 @@
 import logging
 import os
 import threading
+from matplotlib.backend_bases import RendererBase
 import torch
 import time
 from torch.autograd import Variable
@@ -11,6 +12,7 @@ from timeit import default_timer as timer
 
 from tools.eval_tool import valid, gen_time_str, output_value
 from tools.init_tool import init_test_dataset, init_formatter
+from tools.render_tool import ResultRenderer
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +81,9 @@ def train(parameters, config, gpu_list, do_test=False):
     gamma = config.getfloat("train", "lr_multiplier")
     exp_lr_scheduler = lr_scheduler.StepLR(
         optimizer, step_size=step_size, gamma=gamma)
+
+    renderer = ResultRenderer(config)
+    local.renderer = renderer
 
     logger.info("Training start....")
 
