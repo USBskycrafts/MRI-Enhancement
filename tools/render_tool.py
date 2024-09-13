@@ -29,18 +29,20 @@ def render_results(origin, auxiliary, gt, result: List[torch.Tensor], batch, con
     with lock:
         ax = plt.subplot(2, 2, 1)
         ax.set_title("T1")
-        plt.imshow(o.cpu().numpy(), cmap="gray", vmax=1, vmin=0)
+        ax.imshow(o.cpu().numpy(), cmap="gray", vmax=1, vmin=0)
         bx = plt.subplot(2, 2, 3)
         bx.set_title("T1CE")
-        plt.imshow(t.cpu().numpy(), cmap="gray", vmax=1, vmin=0)
+        bx.imshow(t.cpu().numpy(), cmap="gray", vmax=1, vmin=0)
         cx = plt.subplot(2, 2, 4)
         cx.set_title("Result")
-        plt.imshow(r.cpu().numpy(), cmap="gray", vmax=1, vmin=0)
+        cx.imshow(r.cpu().numpy(), cmap="gray", vmax=1, vmin=0)
         dx = plt.subplot(2, 2, 2)
         dx.set_title("T2")
-        plt.imshow(a.cpu().numpy(), cmap="gray", vmax=1, vmin=0)
+        dx.imshow(a.cpu().numpy(), cmap="gray", vmax=1, vmin=0)
+        plt.tight_layout()
         plt.savefig(f"{render_path}/{batch}.png",
                     dpi=2400, bbox_inches='tight')
+        plt.clf()
     return
 
 
